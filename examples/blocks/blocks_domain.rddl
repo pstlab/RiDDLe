@@ -1,0 +1,70 @@
+class Clear : StateVariable {
+
+    Block b;
+
+    Clear(Block b) : b(b) {}
+
+    predicate True() {
+        goal us_b = new hand.UnStack(b1:tau.b, end:start);
+    }
+
+    predicate False() {
+        goal us_b = new hand.Stack(b1:tau.b, end:start);
+    }
+}
+
+class Block : StateVariable {
+
+    Clear clear = new Clear(this);
+
+    predicate On(Block b) {
+        duration >= 1.0;
+        goal stack = new hand.Stack(b0:tau, b1:b, end:start);
+        fact b1nc = new stack.b1.clear.False(start:start); b1nc.duration >= 1.0;
+    }
+
+    predicate OnTable() {
+        duration >= 1.0;
+        goal pd = new hand.PutDown(b:tau, end:start);
+    }
+}
+
+class Hand : StateVariable {
+
+    predicate PickUp(Block b) {
+        duration >= 1.0;
+        goal bot = new b.OnTable(end:start);
+        goal bc = new b.clear.True(end:start);
+        fact bnc = new b.clear.False(start:start); bnc.duration >= 1.0;
+    }
+
+    predicate UnStack(Block b0, Block b1) {
+        duration >= 1.0;
+        goal b0ob1 = new b0.On(b:b1, end:start);
+        goal b0c = new b0.clear.True(end:start);
+        fact b0nc = new b0.clear.False(start:start); b0nc.duration >= 1.0;
+    }
+
+    predicate Holding(Block b) {
+        duration >= 1.0;
+        {
+            goal pu = new PickUp(b:b, end:start);
+        } or {
+            goal us = new UnStack(b0:b, end:start);
+            fact b1c = new us.b1.clear.True(start:start); b1c.duration >= 1.0;
+        }
+    }
+
+    predicate PutDown(Block b) {
+        duration >= 1.0;
+        goal h = new Holding(b:b, end:start);
+        fact bc = new b.clear.True(start:start); bc.duration >= 1.0;
+    }
+
+    predicate Stack(Block b0, Block b1) {
+        duration >= 1.0;
+        goal h = new Holding(b:b0, end:start);
+        goal b1c = new b1.clear.True(end:start);
+        fact b0c = new b0.clear.True(start:start); b0c.duration >= 1.0;
+    }
+}

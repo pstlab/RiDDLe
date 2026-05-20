@@ -1,0 +1,75 @@
+class MunicipalTechnician {
+    ReusableResource activity = new ReusableResource(2.0);
+}
+
+class Road {}
+
+class Building {}
+
+class GreenSpace {}
+
+predicate DoesRoadMaintenance(MunicipalTechnician mt) {
+    false;
+}
+
+predicate DoesBuildingMaintenance(MunicipalTechnician mt) {
+    false;
+}
+
+predicate DoesGreenSpaceMaintenance(MunicipalTechnician mt) {
+    false;
+}
+
+predicate RoadMaintenanceDocuments(Road r, MunicipalTechnician mt) : Interval {
+    duration >= 1.0;
+    goal rm = new DoesRoadMaintenance(mt:mt);
+    fact mt_activity = new mt.activity.Use(start:start, duration:duration, end:end, amount:1.0);
+}
+
+predicate RoadMaintenanceTender(Road r, MunicipalTechnician mt) : Interval {
+    duration >= 5.0;
+    goal rmd = new RoadMaintenanceDocuments(r:r, mt:mt, end:start);
+}
+
+predicate RoadMaintenance(Road r, MunicipalTechnician mt) : Interval {
+    duration >= 20.0;
+    goal rm = new DoesRoadMaintenance(mt:mt);
+    fact mt_activity = new mt.activity.Use(start:start, duration:duration, end:end, amount:1.0);
+    goal rmd = new RoadMaintenanceTender(r:r, mt:mt, end:start);
+}
+
+predicate BuildingMaintenanceDocuments(Building b, MunicipalTechnician mt) : Interval {
+    duration >= 1.0;
+    goal rm = new DoesBuildingMaintenance(mt:mt);
+    fact mt_activity = new mt.activity.Use(start:start, duration:duration, end:end, amount:1.0);
+}
+
+predicate BuildingMaintenanceTender(Building b, MunicipalTechnician mt) : Interval {
+    duration >= 5.0;
+    goal rmd = new BuildingMaintenanceDocuments(b:b, mt:mt, end:start);
+}
+
+predicate BuildingMaintenance(Building b, MunicipalTechnician mt) : Interval {
+    duration >= 30.0;
+    goal rm = new DoesBuildingMaintenance(mt:mt);
+    fact mt_activity = new mt.activity.Use(start:start, duration:duration, end:end, amount:1.0);
+    goal rmd = new BuildingMaintenanceTender(b:b, mt:mt, end:start);
+}
+
+predicate GreenSpacesMaintenanceDocuments(GreenSpace gs, MunicipalTechnician mt) : Interval {
+    duration >= 1.0;
+    goal rm = new DoesGreenSpaceMaintenance(mt:mt);
+    fact mt_activity = new mt.activity.Use(start:start, duration:duration, end:end, amount:1.0);
+}
+
+predicate GreenSpacesMaintenanceTender(GreenSpace gs, MunicipalTechnician mt) : Interval {
+    duration >= 5.0;
+    goal rmd = new GreenSpacesMaintenanceDocuments(gs:gs, mt:mt, end:start);
+}
+
+predicate GreenSpacesMaintenance(GreenSpace gs, MunicipalTechnician mt) : Interval {
+    duration >= 20.0;
+    goal rm = new DoesGreenSpaceMaintenance(mt:mt);
+    fact mt_activity = new mt.activity.Use(start:start, duration:duration, end:end, amount:1.0);
+    goal rmd = new GreenSpacesMaintenanceTender(gs:gs, mt:mt, end:start);
+}

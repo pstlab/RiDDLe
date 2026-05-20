@@ -1,0 +1,97 @@
+MunicipalTechnician mt0 = new MunicipalTechnician();
+fact mt0_rm = new DoesRoadMaintenance(mt:mt0);
+fact mt0_bm = new DoesBuildingMaintenance(mt:mt0);
+fact mt0_gsm = new DoesGreenSpaceMaintenance(mt:mt0);
+
+Road r0 = new Road();
+Road r1 = new Road();
+Road r2 = new Road();
+Road r3 = new Road();
+Road r4 = new Road();
+Road r5 = new Road();
+Road r6 = new Road();
+Road r7 = new Road();
+Road r8 = new Road();
+Road r9 = new Road();
+
+Building b0 = new Building();
+Building b1 = new Building();
+Building b2 = new Building();
+Building b3 = new Building();
+Building b4 = new Building();
+Building b5 = new Building();
+Building b6 = new Building();
+Building b7 = new Building();
+Building b8 = new Building();
+Building b9 = new Building();
+
+GreenSpace gs0 = new GreenSpace();
+GreenSpace gs1 = new GreenSpace();
+GreenSpace gs2 = new GreenSpace();
+GreenSpace gs3 = new GreenSpace();
+GreenSpace gs4 = new GreenSpace();
+GreenSpace gs5 = new GreenSpace();
+GreenSpace gs6 = new GreenSpace();
+GreenSpace gs7 = new GreenSpace();
+GreenSpace gs8 = new GreenSpace();
+GreenSpace gs9 = new GreenSpace();
+
+goal bm0 = new BuildingMaintenance(b:b0);
+goal gm0 = new GreenSpacesMaintenance(gs:gs0);
+goal rm0 = new RoadMaintenance(r:r0);
+rm0.start >= bm0.end;
+rm0.start >= gm0.end;
+
+goal bm1 = new BuildingMaintenance(b:b1);
+goal gm1 = new GreenSpacesMaintenance(gs:gs1);
+goal rm1 = new RoadMaintenance(r:r1);
+rm1.start >= bm1.end;
+rm1.start >= gm1.end;
+
+goal bm2 = new BuildingMaintenance(b:b2);
+goal gm2 = new GreenSpacesMaintenance(gs:gs2);
+goal rm2 = new RoadMaintenance(r:r2);
+rm2.start >= bm2.end;
+rm2.start >= gm2.end;
+
+goal bm3 = new BuildingMaintenance(b:b3);
+goal gm3 = new GreenSpacesMaintenance(gs:gs3);
+goal rm3 = new RoadMaintenance(r:r3);
+rm3.start >= bm3.end;
+rm3.start >= gm3.end;
+
+goal bm4 = new BuildingMaintenance(b:b4);
+goal gm4 = new GreenSpacesMaintenance(gs:gs4);
+goal rm4 = new RoadMaintenance(r:r4);
+rm4.start >= bm4.end;
+rm4.start >= gm4.end;
+
+goal bm5 = new BuildingMaintenance(b:b5);
+goal gm5 = new GreenSpacesMaintenance(gs:gs5);
+goal rm5 = new RoadMaintenance(r:r5);
+rm5.start >= bm5.end;
+rm5.start >= gm5.end;
+
+goal bm6 = new BuildingMaintenance(b:b6);
+goal gm6 = new GreenSpacesMaintenance(gs:gs6);
+goal rm6 = new RoadMaintenance(r:r6);
+rm6.start >= bm6.end;
+rm6.start >= gm6.end;
+
+goal bm7 = new BuildingMaintenance(b:b7);
+goal gm7 = new GreenSpacesMaintenance(gs:gs7);
+goal rm7 = new RoadMaintenance(r:r7);
+rm7.start >= bm7.end;
+rm7.start >= gm7.end;
+
+goal bm8 = new BuildingMaintenance(b:b8);
+goal gm8 = new GreenSpacesMaintenance(gs:gs8);
+goal rm8 = new RoadMaintenance(r:r8);
+rm8.start >= bm8.end;
+rm8.start >= gm8.end;
+
+goal bm9 = new BuildingMaintenance(b:b9);
+goal gm9 = new GreenSpacesMaintenance(gs:gs9);
+goal rm9 = new RoadMaintenance(r:r9);
+rm9.start >= bm9.end;
+rm9.start >= gm9.end;

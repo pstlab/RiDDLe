@@ -1,0 +1,18 @@
+MunicipalTechnician mt0 = new MunicipalTechnician();
+MunicipalTechnician mt1 = new MunicipalTechnician();
+fact mt0_rm = new DoesRoadMaintenance(mt:mt0);
+fact mt0_bm = new DoesBuildingMaintenance(mt:mt0);
+fact mt1_rm = new DoesRoadMaintenance(mt:mt1);
+fact mt1_gsm = new DoesGreenSpaceMaintenance(mt:mt1);
+
+Road r0 = new Road();
+
+Building b0 = new Building();
+
+GreenSpace gs0 = new GreenSpace();
+
+goal bm = new BuildingMaintenance();
+goal gm = new GreenSpacesMaintenance();
+goal rm = new RoadMaintenance();
+rm.start >= bm.end;
+rm.start >= gm.end;
