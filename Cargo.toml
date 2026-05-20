@@ -7,6 +7,8 @@ description = "RiDDLe is a language for the definition of timeline-based domains
 readme = "README.md"
 repository = "https://github.com/pstlab/RiDDLe"
 license-file = "LICENSE"
+keywords = ["parser", "planning", "domain", "language", "timeline"]
+categories = ["parser-implementations", "compilers"]
 
 [lib]
 name = "riddle"
