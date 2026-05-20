@@ -1,6 +1,6 @@
 class TestSV : StateVariable {
 
-    predicate P(real x) {
+    predicate P(real x) : Interval {
         duration >= 10.0;
     }
 }

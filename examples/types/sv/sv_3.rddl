@@ -1,11 +1,11 @@
 class TestSV : StateVariable {
 
-    predicate At(real x, real y) {
+    predicate At(real x, real y) : Interval {
         duration >= 1.0;
         goal going_at = new GoingTo(end:start, x:x, y:y);
     }
 
-    predicate GoingTo(real x, real y) {
+    predicate GoingTo(real x, real y) : Interval {
         duration >= 1.0;
         goal at = new At(end:start);
     }

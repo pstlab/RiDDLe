@@ -5,12 +5,12 @@
 
 class Navigator : StateVariable {
 
-    predicate At(real l) {
+    predicate At(real l) : Interval {
         duration >= 1;
         goal going = new GoingTo(end:start, to:l);
     }
 
-    predicate GoingTo(real from, real to) {
+    predicate GoingTo(real from, real to) : Interval {
         duration >= 1;
         goal at = new At(end:start, l:from);
     }

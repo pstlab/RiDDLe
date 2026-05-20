@@ -4,7 +4,7 @@ class Clear : StateVariable {
 
     Clear(Block b) : b(b) {}
 
-    predicate True() {
+    predicate True() : Interval {
         goal us_b = new hand.UnStack(b1:tau.b, end:start);
     }
 
@@ -17,13 +17,13 @@ class Block : StateVariable {
 
     Clear clear = new Clear(this);
 
-    predicate On(Block b) {
+    predicate On(Block b) : Interval {
         duration >= 1.0;
         goal stack = new hand.Stack(b0:tau, b1:b, end:start);
         fact b1nc = new stack.b1.clear.False(start:start); b1nc.duration >= 1.0;
     }
 
-    predicate OnTable() {
+    predicate OnTable() : Interval {
         duration >= 1.0;
         goal pd = new hand.PutDown(b:tau, end:start);
     }
@@ -31,21 +31,21 @@ class Block : StateVariable {
 
 class Hand : StateVariable {
 
-    predicate PickUp(Block b) {
+    predicate PickUp(Block b) : Interval {
         duration >= 1.0;
         goal bot = new b.OnTable(end:start);
         goal bc = new b.clear.True(end:start);
         fact bnc = new b.clear.False(start:start); bnc.duration >= 1.0;
     }
 
-    predicate UnStack(Block b0, Block b1) {
+    predicate UnStack(Block b0, Block b1) : Interval {
         duration >= 1.0;
         goal b0ob1 = new b0.On(b:b1, end:start);
         goal b0c = new b0.clear.True(end:start);
         fact b0nc = new b0.clear.False(start:start); b0nc.duration >= 1.0;
     }
 
-    predicate Holding(Block b) {
+    predicate Holding(Block b) : Interval {
         duration >= 1.0;
         {
             goal pu = new PickUp(b:b, end:start);
@@ -55,13 +55,13 @@ class Hand : StateVariable {
         }
     }
 
-    predicate PutDown(Block b) {
+    predicate PutDown(Block b) : Interval {
         duration >= 1.0;
         goal h = new Holding(b:b, end:start);
         fact bc = new b.clear.True(start:start); bc.duration >= 1.0;
     }
 
-    predicate Stack(Block b0, Block b1) {
+    predicate Stack(Block b0, Block b1) : Interval {
         duration >= 1.0;
         goal h = new Holding(b:b0, end:start);
         goal b1c = new b1.clear.True(end:start);

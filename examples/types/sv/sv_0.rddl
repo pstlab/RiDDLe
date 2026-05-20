@@ -1,15 +1,15 @@
 class TestSV : StateVariable {
 
-    predicate P0() {
+    predicate P0() : Interval {
         duration >= 10.0;
     }
 
-    predicate P1() {
+    predicate P1() : Interval {
         duration >= 10.0;
         goal p0 = new P0(end:start);
     }
 
-    predicate P2() {
+    predicate P2() : Interval {
         duration >= 10.0;
         goal p1 = new P1(end:start);
     }
