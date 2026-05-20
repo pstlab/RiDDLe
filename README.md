@@ -1,7 +1,7 @@
 # RiDDLe
 
-[![Crate](https://img.shields.io/crates/v/riddle?logo=rust)](https://crates.io/crates/riddle)
-[![Docs](https://docs.rs/riddle/badge.svg)](https://docs.rs/riddle)
+[![Crate](https://img.shields.io/crates/v/riddle-lang?logo=rust)](https://crates.io/crates/riddle-lang)
+[![Docs](https://docs.rs/riddle-lang/badge.svg)](https://docs.rs/riddle-lang)
 [![Rust](https://img.shields.io/badge/Rust-1.95+-orange?logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 ![Build Status](https://github.com/pstlab/RiDDLe/actions/workflows/rust.yml/badge.svg)
@@ -22,7 +22,7 @@ More language-level details are available in the [wiki](https://github.com/ratio
 
 ## Status
 
-The project currently exposes RiDDLe as a Rust library crate (`riddle`).
+The project currently exposes RiDDLe as a Rust library crate (published as `riddle-lang` on crates.io, imported as module `riddle`).
 
 - Parsing entry points are stable and covered by tests.
 - The runtime includes class/predicate registration, method/constructor execution, and formula instantiation.
