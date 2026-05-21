@@ -224,8 +224,8 @@ impl CommonScope {
     }
 
     /// Builds a local scope for constructor arguments.
-    pub fn from_costructor(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, constructor: ConstructorDef) -> Self {
-        let scope = Self::new(core, scope);
+    pub fn from_costructor(core: Weak<dyn Core>, scope: Weak<dyn Class>, constructor: ConstructorDef) -> Self {
+        let scope = Self::new(core, Some(scope));
         for (arg_type, arg_name) in constructor.args {
             scope.fields.borrow_mut().insert(arg_name.clone(), Rc::new(Field { name: arg_name, field_type: arg_type, default: None }));
         }
@@ -415,7 +415,7 @@ pub struct Constructor {
 
 impl Constructor {
     /// Creates a constructor from its parsed definition.
-    pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, mut constructor: ConstructorDef) -> Self {
+    pub fn new(core: Weak<dyn Core>, scope: Weak<dyn Class>, mut constructor: ConstructorDef) -> Self {
         Self {
             core: core.clone(),
             args: std::mem::take(&mut constructor.args),
@@ -673,7 +673,7 @@ impl CommonClass {
             core: core.clone(),
             name,
             parents,
-            constructors: constructors_def.into_iter().map(|c| Constructor::new(core.clone(), Some(weak_self.clone()), c)).collect(),
+            constructors: constructors_def.into_iter().map(|c| Constructor::new(core.clone(), weak_self.clone(), c)).collect(),
             scope: CommonScope::from_class(core.clone(), scope, weak_self.clone(), class),
             instances: RefCell::new(Vec::new()),
         })
@@ -704,6 +704,7 @@ impl Type for CommonClass {
     }
 
     fn new_instance(self: Rc<Self>) -> Rc<dyn Var> {
+        println!("Creating instance of class '{}'", self.full_name());
         let instance = Rc::new(Object::new(self.clone(), None));
         self.instances.borrow_mut().push(instance.clone());
         for parent in &self.parents {
