@@ -433,13 +433,12 @@ impl Constructor {
     }
 
     /// Creates a new object instance and runs constructor statements.
-    pub fn call(&self, env: Rc<dyn Env>, args: Vec<Rc<dyn Var>>) -> Result<Option<Rc<dyn Var>>, RiddleError> {
+    pub fn call(&self, object: Rc<dyn Var>, args: Vec<Rc<dyn Var>>) -> Result<Rc<dyn Var>, RiddleError> {
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
         let class = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).ok_or_else(|| RiddleError::RuntimeError("Constructor is not defined within a class".into()))?;
-        let object = class.new_instance();
-        let constructor_env = Rc::new(CommonEnv::new(Some(env)));
+        let constructor_env = Rc::new(CommonEnv::new(Some(object.clone().as_env().unwrap())));
         constructor_env.set("this".to_string(), object.clone());
         for ((arg_type, arg_name), arg_value) in self.args.iter().zip(args) {
             if !arg_value.var_type().full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
@@ -450,7 +449,7 @@ impl Constructor {
         for stmt in &self.statements {
             execute(self.scope.clone(), constructor_env.clone(), stmt)?;
         }
-        Ok(Some(object))
+        Ok(object)
     }
 }
 

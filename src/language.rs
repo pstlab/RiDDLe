@@ -469,10 +469,11 @@ pub fn evaluate(scp: Rc<dyn Scope>, env: Rc<dyn Env>, expr: &Expr) -> Result<Rc<
         Expr::NewObject { class_name, args } => {
             let (first, rest) = class_name.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty class name".into()))?;
             let class = scp.get_type(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?.as_class().ok_or_else(|| RiddleError::NotAClass(first.to_string()))?;
-            rest.iter().try_fold(class.clone(), |acc, id| acc.get_type(id).ok_or_else(|| RiddleError::NotFound(format!("Class '{}' in path", id)))?.as_class().ok_or_else(|| RiddleError::NotAClass(id.to_string())))?;
+            let class = rest.iter().try_fold(class.clone(), |acc, id| acc.get_type(id).ok_or_else(|| RiddleError::NotFound(format!("Class '{}' in path", id)))?.as_class().ok_or_else(|| RiddleError::NotAClass(id.to_string())))?;
             let evaluated_args: Vec<Rc<dyn Var>> = args.iter().map(|a| evaluate(scp.clone(), env.clone(), a)).collect::<Result<_, _>>()?;
             let constructor = class.constructor(&evaluated_args.iter().map(|arg| arg.var_type()).collect::<Vec<_>>()).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with specified argument types", class_name.join("."))))?;
-            constructor.call(env, evaluated_args)?.ok_or_else(|| RiddleError::RuntimeError(format!("Constructor for class '{}' did not return a value", class_name.join("."))))
+            let object = class.clone().new_instance();
+            constructor.call(object.clone(), evaluated_args)
         }
     }
 }
