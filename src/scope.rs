@@ -1,7 +1,7 @@
 use crate::{
     core::Core,
     env::{Atom, BoolExpr, CommonEnv, Env, Object, Var},
-    language::{ClassDef, ConstructorDef, Expr, MethodDef, PredicateDef, ProblemDef, RiddleError, Statement, execute},
+    language::{ClassDef, ConstructorDef, Expr, MethodDef, PredicateDef, ProblemDef, RiddleError, Statement, evaluate, execute},
 };
 use std::{
     any::Any,
@@ -448,7 +448,22 @@ impl Constructor {
             }
             constructor_env.set(arg_name.clone(), arg_value);
         }
-        for (init_field, init_exprs) in &self.init {}
+        for parent in class.parents() {
+            let (first_class, nested_classes) = parent.split_first().expect("Parent class name should not be empty");
+            let parent_class = nested_classes
+                .iter()
+                .fold(class.get_type(first_class).expect("Parent class in init should exist").as_class().expect("Parent class in init should be a class"), |current, part| current.get_type(part).expect("Parent class in init should exist").as_class().expect("Parent class in init should be a class"));
+            if let Some((_, init_exprs)) = self.init.iter().find(|(init_field, _)| init_field.iter().map(|s| s.as_str()).eq(parent.iter().map(|s| s.as_str()))) {
+                let exprs = init_exprs.iter().map(|e| evaluate(self.scope.clone(), constructor_env.clone(), e)).collect::<Result<Vec<_>, _>>()?;
+                let types = exprs.iter().map(|e| e.var_type()).collect::<Vec<_>>();
+                let constructor = parent_class.constructor(&types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for parent class '{}' with specified argument types", parent_class.full_name())))?;
+                constructor.call(object.clone(), exprs)?;
+            } else {
+                let constructor = parent_class.constructor(&[]).ok_or_else(|| RiddleError::NotFound(format!("No-arg constructor for parent class '{}'", parent_class.full_name())))?;
+                constructor.call(object.clone(), vec![])?;
+            }
+        }
+
         for stmt in &self.statements {
             execute(self.scope.clone(), constructor_env.clone(), stmt)?;
         }
