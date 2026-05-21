@@ -57,7 +57,7 @@ pub struct ClassDef {
 #[derive(Debug, PartialEq)]
 pub struct ConstructorDef {
     pub args: Vec<(Vec<String>, String)>,
-    pub init: Vec<(String, Vec<Expr>)>,
+    pub init: Vec<(Vec<String>, Vec<Expr>)>,
     pub statements: Vec<Statement>,
 }
 

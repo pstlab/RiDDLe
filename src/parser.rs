@@ -232,10 +232,22 @@ impl<'a> Parser<'a> {
         if let Some(Token::Colon) = self.peek(0) {
             self.expect(Token::Colon)?; // consume ':'
             while !matches!(self.peek(0), Some(Token::LBrace)) {
-                let field_name = match self.next() {
-                    Some(Token::Identifier(name)) => name,
-                    _ => return Err(RiddleError::RuntimeError("Expected identifier in constructor initialization".to_string())),
-                };
+                let ids = match self.next() {
+                    Some(Token::Identifier(name)) => {
+                        let mut ids = vec![name];
+                        while let Some(Token::Dot) = self.peek(0) {
+                            self.expect(Token::Dot)?; // consume '.'
+                            if let Some(Token::Identifier(next_name)) = self.next() {
+                                ids.push(next_name);
+                            } else {
+                                return Err(RiddleError::RuntimeError("Expected identifier after '.' in constructor initialization".to_string()));
+                            }
+                        }
+                        Ok(ids)
+                    }
+                    Some(token) => Err(RiddleError::RuntimeError(format!("Unexpected token in constructor initialization: {:?}", token))),
+                    None => Err(RiddleError::RuntimeError("Unexpected end of input while parsing constructor initialization".to_string())),
+                }?;
                 self.expect(Token::LParen)?;
                 let mut exprs = Vec::new();
                 while !matches!(self.peek(0), Some(Token::RParen)) {
@@ -247,7 +259,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 self.expect(Token::RParen)?;
-                init.push((field_name, exprs));
+                init.push((ids, exprs));
                 if let Some(Token::Comma) = self.peek(0) {
                     self.expect(Token::Comma)?; // consume ','
                 } else {
@@ -907,7 +919,7 @@ mod tests {
         assert_eq!(program.classes[0].fields[0].1[1].0, "y".to_string());
         assert_eq!(program.classes[0].constructors.len(), 1);
         assert_eq!(program.classes[0].constructors[0].args, vec![(vec!["int".to_string()], "x".to_string()), (vec!["int".to_string()], "y".to_string())]);
-        assert_eq!(program.classes[0].constructors[0].init, vec![("distance".to_string(), vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }])]);
+        assert_eq!(program.classes[0].constructors[0].init, vec![(vec!["distance".to_string()], vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }])]);
         assert_eq!(program.classes[0].constructors[0].statements.len(), 1);
         if let Statement::Assign { name, value } = &program.classes[0].constructors[0].statements[0] {
             assert_eq!(name, &vec!["distance".to_string()]);
@@ -997,7 +1009,7 @@ mod tests {
         "#;
         let constructor = parse_constructor(input).expect("Failed to parse constructor");
         assert_eq!(constructor.args, vec![(vec!["int".to_string()], "x".to_string()), (vec!["int".to_string()], "y".to_string())]);
-        assert_eq!(constructor.init, vec![("distance".to_string(), vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }])]);
+        assert_eq!(constructor.init, vec![(vec!["distance".to_string()], vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }])]);
         assert_eq!(constructor.statements.len(), 1);
         if let Statement::Assign { name, value } = &constructor.statements[0] {
             assert_eq!(name, &vec!["distance".to_string()]);

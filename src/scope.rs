@@ -410,6 +410,7 @@ pub struct Constructor {
     core: Weak<dyn Core>,
     scope: Rc<CommonScope>,
     args: Vec<(Vec<String>, String)>,
+    init: Vec<(Vec<String>, Vec<Expr>)>,
     statements: Vec<Statement>,
 }
 
@@ -420,6 +421,7 @@ impl Constructor {
             core: core.clone(),
             args: std::mem::take(&mut constructor.args),
             statements: std::mem::take(&mut constructor.statements),
+            init: std::mem::take(&mut constructor.init),
             scope: Rc::new(CommonScope::from_costructor(core, scope, constructor)),
         }
     }
@@ -446,6 +448,7 @@ impl Constructor {
             }
             constructor_env.set(arg_name.clone(), arg_value);
         }
+        for (init_field, init_exprs) in &self.init {}
         for stmt in &self.statements {
             execute(self.scope.clone(), constructor_env.clone(), stmt)?;
         }
