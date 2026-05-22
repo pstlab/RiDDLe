@@ -80,7 +80,7 @@ impl Var for BoolExpr {
     }
 }
 
-pub(super) struct Object {
+pub struct Object {
     id: ObjectId,
     class: Weak<dyn Type>,
     env: CommonEnv,

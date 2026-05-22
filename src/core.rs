@@ -1,12 +1,11 @@
+use crate::{
+    env::{Atom, AtomId, CommonEnv, Env, Object, ObjectId, Slot},
+    scope::{BoolType, CommonScope, Predicate, Scope, Type},
+};
 use std::{
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
-};
-
-use crate::{
-    env::{Atom, AtomId, CommonEnv, Env, Object, ObjectId, Slot},
-    scope::{BoolType, CommonScope, Predicate, Scope, Type},
 };
 
 pub trait Core: Scope + Env {
