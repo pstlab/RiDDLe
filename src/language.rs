@@ -1,4 +1,8 @@
-use crate::{env::Env, scope::Scope};
+use crate::{
+    RiddleError,
+    env::{BoolExpr, Env, Slot, to_cnf},
+    scope::Scope,
+};
 use std::{fmt, rc::Rc};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -81,4 +85,28 @@ pub struct Disjunction {
     pub scp: Rc<dyn Scope>,
     pub env: Rc<dyn Env>,
     pub disjuncts: Vec<(Vec<Statement>, Expr)>,
+}
+
+pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result<(), RiddleError> {
+    match stmt {
+        Statement::Expr(expr) => {
+            let expr = evaluate(scp.clone(), env.clone(), expr)?;
+            if let Slot::Primitive(var) = expr.clone()
+                && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
+            {
+                scp.core().assert(to_cnf(bool_expr));
+                Ok(())
+            } else {
+                Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", expr)))
+            }
+        }
+        _ => unimplemented!(),
+    }
+}
+
+pub fn evaluate(scp: Rc<dyn Scope>, _env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, RiddleError> {
+    match expr {
+        Expr::Bool(bool) => Ok(scp.clone().core().new_bool(*bool)),
+        _ => unimplemented!(),
+    }
 }

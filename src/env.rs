@@ -1,4 +1,5 @@
 use crate::scope::{BoolType, Predicate, Scope, Type};
+use core::fmt;
 use std::{
     any::Any,
     cell::RefCell,
@@ -17,6 +18,16 @@ pub enum Slot {
     Primitive(Rc<dyn Var>),
     ObjectRef(ObjectId),
     AtomRef(AtomId),
+}
+
+impl fmt::Display for Slot {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Slot::Primitive(var) => write!(f, "{}", var.var_type().name()),
+            Slot::ObjectRef(obj_id) => write!(f, "Object({})", obj_id.0),
+            Slot::AtomRef(atom_id) => write!(f, "Atom({})", atom_id.0),
+        }
+    }
 }
 
 pub trait Var {
@@ -64,8 +75,8 @@ pub enum BoolExpr {
     Eq { var_type: Weak<BoolType>, left: Slot, right: Slot },
     Lt { var_type: Weak<BoolType>, left: Slot, right: Slot },
     Leq { var_type: Weak<BoolType>, left: Slot, right: Slot },
-    Or { var_type: Weak<BoolType>, terms: Vec<BoolExpr> },
-    And { var_type: Weak<BoolType>, terms: Vec<BoolExpr> },
+    Or { var_type: Weak<BoolType>, terms: Vec<Rc<BoolExpr>> },
+    And { var_type: Weak<BoolType>, terms: Vec<Rc<BoolExpr>> },
 }
 
 impl Var for BoolExpr {
@@ -183,4 +194,65 @@ impl Env for Atom {
     fn set(&self, name: String, value: Slot) {
         self.env.set(name, value);
     }
+}
+
+fn push_negations(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+    match expr.as_ref() {
+        BoolExpr::Not { var_type, term } => {
+            let inner_expr = push_negations(term.clone());
+            match inner_expr.as_any().downcast_ref::<BoolExpr>() {
+                Some(BoolExpr::Not { var_type: inner_var_type, term: inner_term }) => Rc::new(BoolExpr::Term { var_type: inner_var_type.clone(), term: Slot::Primitive(inner_term.clone()) }),
+                Some(BoolExpr::And { var_type: inner_var_type, terms }) => Rc::new(BoolExpr::Or {
+                    var_type: inner_var_type.clone(),
+                    terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
+                }),
+                Some(BoolExpr::Or { var_type: inner_var_type, terms }) => Rc::new(BoolExpr::And {
+                    var_type: inner_var_type.clone(),
+                    terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
+                }),
+                _ => Rc::new(BoolExpr::Not { var_type: var_type.clone(), term: push_negations(term.clone()) }),
+            }
+        }
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::And {
+            var_type: var_type.clone(),
+            terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
+        }),
+        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::Or {
+            var_type: var_type.clone(),
+            terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
+        }),
+        _ => expr.clone(),
+    }
+}
+
+fn distribute(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+    match expr.as_ref() {
+        BoolExpr::Or { var_type, terms } => {
+            let distributed_terms: Vec<Rc<BoolExpr>> = terms.iter().map(|t| distribute(t.clone())).collect();
+            let mut result_terms: Vec<Rc<BoolExpr>> = vec![Rc::new(BoolExpr::Term {
+                var_type: var_type.clone(),
+                term: Slot::Primitive(Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![] })),
+            })];
+            for term in distributed_terms {
+                if let BoolExpr::Or { terms: or_terms, .. } = term.as_ref() {
+                    let mut new_result_terms: Vec<Rc<BoolExpr>> = Vec::new();
+                    for res_term in &result_terms {
+                        for or_term in or_terms {
+                            new_result_terms.push(Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![res_term.clone(), or_term.clone()] }));
+                        }
+                    }
+                    result_terms = new_result_terms;
+                } else {
+                    result_terms = result_terms.into_iter().map(|res_term| Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![res_term, term.clone()] })).collect();
+                }
+            }
+            Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: result_terms })
+        }
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(|t| distribute(t.clone())).collect() }),
+        _ => expr.clone(),
+    }
+}
+
+pub(crate) fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+    distribute(push_negations(expr))
 }
