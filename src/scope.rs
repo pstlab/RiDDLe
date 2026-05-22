@@ -44,6 +44,81 @@ impl Type for BoolType {
     }
 }
 
+pub struct IntType {
+    core: Weak<dyn Core>,
+}
+
+impl IntType {
+    /// Creates the built-in integer type.
+    pub fn new(core: Weak<dyn Core>) -> Self {
+        Self { core }
+    }
+}
+
+impl Type for IntType {
+    fn name(&self) -> &str {
+        "int"
+    }
+
+    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
+    }
+
+    fn new_instance(self: Rc<Self>) -> Slot {
+        self.core.upgrade().unwrap().new_int_var()
+    }
+}
+
+pub struct RealType {
+    core: Weak<dyn Core>,
+}
+
+impl RealType {
+    /// Creates the built-in real (floating-point) type.
+    pub fn new(core: Weak<dyn Core>) -> Self {
+        Self { core }
+    }
+}
+
+impl Type for RealType {
+    fn name(&self) -> &str {
+        "real"
+    }
+
+    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
+    }
+
+    fn new_instance(self: Rc<Self>) -> Slot {
+        self.core.upgrade().unwrap().new_real_var()
+    }
+}
+
+pub struct StringType {
+    core: Weak<dyn Core>,
+}
+
+impl StringType {
+    /// Creates the built-in string type.
+    pub fn new(core: Weak<dyn Core>) -> Self {
+        Self { core }
+    }
+}
+
+impl Type for StringType {
+    fn name(&self) -> &str {
+        "string"
+    }
+
+    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
+    }
+
+    fn new_instance(self: Rc<Self>) -> Slot {
+        self.core.upgrade().unwrap().new_string_var()
+    }
+}
+
 pub trait Scope {
     fn core(self: Rc<Self>) -> Rc<dyn Core>;
     fn scope(&self) -> Option<Rc<dyn Scope>>;

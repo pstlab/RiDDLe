@@ -1,6 +1,7 @@
 use crate::{
+    RiddleError,
     env::{Atom, AtomId, CommonEnv, Env, Object, ObjectId, Slot},
-    scope::{BoolType, CommonScope, Predicate, Scope, Type},
+    scope::{BoolType, CommonScope, IntType, Predicate, RealType, Scope, StringType, Type},
 };
 use std::{
     cell::RefCell,
@@ -11,6 +12,17 @@ use std::{
 pub trait Core: Scope + Env {
     fn new_bool(&self, value: bool) -> Slot;
     fn new_bool_var(&self) -> Slot;
+    fn new_int(&self, value: i64) -> Slot;
+    fn new_int_var(&self) -> Slot;
+    fn new_real(&self, num: i64, den: i64) -> Slot;
+    fn new_real_var(&self) -> Slot;
+    fn new_string(&self, value: &str) -> Slot;
+    fn new_string_var(&self) -> Slot;
+
+    fn sum(&self, sum: &[Slot]) -> Result<Slot, RiddleError>;
+    fn opposite(&self, term: Slot) -> Result<Slot, RiddleError>;
+    fn mul(&self, mul: &[Slot]) -> Result<Slot, RiddleError>;
+    fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError>;
 
     fn new_object(&self, class: Rc<dyn Type>, parent_env: Option<Rc<dyn Env>>) -> ObjectId;
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>>;
@@ -34,6 +46,9 @@ impl CommonCore {
             atoms: RefCell::new(Vec::new()),
         });
         c_core.add_type(Rc::new(BoolType::new(core.clone())));
+        c_core.add_type(Rc::new(IntType::new(core.clone())));
+        c_core.add_type(Rc::new(RealType::new(core.clone())));
+        c_core.add_type(Rc::new(StringType::new(core.clone())));
         c_core
     }
 
