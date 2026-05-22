@@ -463,7 +463,7 @@ impl Constructor {
         let class = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).ok_or_else(|| RiddleError::RuntimeError("Constructor is not defined within a class".into()))?;
         // we first execute parent constructors in declaration order, passing specified arguments or defaults if provided..
         for parent in class.parents() {
-            let parent_class = get_type_by_path(self.scope.clone(), parent)?.as_class().ok_or_else(|| RiddleError::NotAClass(parent.join(".")))?;
+            let parent_class = get_type_by_path(self.scope.as_ref(), parent)?.as_class().ok_or_else(|| RiddleError::NotAClass(parent.join(".")))?;
             if let Some((_, init_exprs)) = self.init.iter().find(|(init_field, _)| init_field.iter().map(|s| s.as_str()).eq(parent.iter().map(|s| s.as_str()))) {
                 let exprs = init_exprs.iter().map(|e| evaluate(self.scope.clone(), constructor_env.clone(), e)).collect::<Result<Vec<_>, _>>()?;
                 let types = exprs.iter().map(|e| e.var_type()).collect::<Vec<_>>();
@@ -477,7 +477,7 @@ impl Constructor {
 
         // we then populate fields declared in this class..
         for field in class.get_fields() {
-            let fld_tp = get_type_by_path(self.scope.clone(), field.field_type())?;
+            let fld_tp = get_type_by_path(self.scope.as_ref(), field.field_type())?;
             if obj_env.get(field.name()).is_none() {
                 if let Some(default_expr) = field.default() {
                     let value = evaluate(self.scope.clone(), constructor_env.clone(), default_expr)?;
@@ -600,7 +600,7 @@ impl Predicate {
                 let parent_predicate = if class_path.is_empty() {
                     self.get_predicate(predicate_name).expect("Parent predicate should exist")
                 } else {
-                    let class = get_type_by_path(self.clone(), class_path).expect("Parent predicate class should exist").as_class().expect("Parent predicate class should be a class");
+                    let class = get_type_by_path(self.as_ref(), class_path).expect("Parent predicate class should exist").as_class().expect("Parent predicate class should be a class");
                     class.get_predicate(predicate_name).expect(&format!("Parent predicate '{}' should exist in class '{}'", predicate_name, class.full_name()))
                 };
                 pred_hierarchy.push_back(parent_predicate);
@@ -772,7 +772,7 @@ impl Type for CommonClass {
         let instance = Rc::new(Object::new(self.clone(), None));
         self.instances.borrow_mut().push(instance.clone());
         for parent in &self.parents {
-            let parent_class = get_type_by_path(self.clone(), parent).expect("Parent class should exist").as_class().expect("Parent class should be a class");
+            let parent_class = get_type_by_path(self.as_ref(), parent).expect("Parent class should exist").as_class().expect("Parent class should be a class");
             parent_class.as_any().downcast_ref::<CommonClass>().expect("Parent class should be a CommonClass").instances.borrow_mut().push(instance.clone());
         }
         instance
@@ -871,7 +871,7 @@ pub fn arith_class(cr: &dyn Core, terms: &[Rc<dyn Var>]) -> Result<Rc<dyn Type>,
     }
 }
 
-pub fn get_type_by_path(scope: Rc<dyn Scope>, path: &[String]) -> Result<Rc<dyn Type>, RiddleError> {
+pub fn get_type_by_path(scope: &dyn Scope, path: &[String]) -> Result<Rc<dyn Type>, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty type path".into()))?;
     rest.iter().try_fold(scope.get_type(first).ok_or_else(|| RiddleError::NotFound(first.clone()))?, |current, part| current.as_class().ok_or_else(|| RiddleError::NotAClass(first.clone()))?.get_type(part).ok_or_else(|| RiddleError::NotFound(format!("Class '{}' in path", part))))
 }

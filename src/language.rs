@@ -231,7 +231,7 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             }
         }
         Statement::LocalField { field_type, fields } => {
-            let fld_tp = get_type_by_path(scp.clone(), field_type)?;
+            let fld_tp = get_type_by_path(scp.as_ref(), field_type)?;
             for (name, default) in fields {
                 if let Some(expr) = default {
                     let value = evaluate(scp.clone(), env.clone(), expr)?;
@@ -261,13 +261,13 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
                 Ok(())
             } else {
                 let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty assignment path".into()))?;
-                let var = get_var_by_path(&env, rest)?;
+                let var = get_var_by_path(env.as_ref(), rest)?;
                 var.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(last.to_string()))?.set(last.to_string(), value);
                 Ok(())
             }
         }
         Statement::ForAll { var_type, var_name, statements } => {
-            let class = get_type_by_path(scp.clone(), var_type)?.as_class().ok_or_else(|| RiddleError::NotAClass(var_type.join(".")))?;
+            let class = get_type_by_path(scp.as_ref(), var_type)?.as_class().ok_or_else(|| RiddleError::NotAClass(var_type.join(".")))?;
             for instance in class.instances() {
                 let loop_env = Rc::new(CommonEnv::new(Some(env.clone())));
                 loop_env.set(var_name.clone(), instance);
@@ -283,7 +283,7 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             Ok(())
         }
         Statement::Formula { is_fact, name, tau, predicate_name, args } => {
-            let tau = if tau.is_empty() { None } else { Some(get_var_by_path(&env, tau)?) };
+            let tau = if tau.is_empty() { None } else { Some(get_var_by_path(env.as_ref(), tau)?) };
             let predicate = if let Some(tau) = tau.clone() {
                 tau.as_ref().var_type().as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", tau.var_type().full_name())))?.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, tau.var_type().full_name())))?
             } else {
@@ -303,7 +303,7 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             while let Some(pred) = pred_hierarchy.pop_front() {
                 for (arg_type, name) in pred.args() {
                     if !args.contains_key(name) {
-                        let arg_tp = get_type_by_path(scp.clone(), arg_type)?;
+                        let arg_tp = get_type_by_path(scp.as_ref(), arg_type)?;
                         if let Some(class) = arg_tp.clone().as_class() {
                             let instances = class.instances().into_iter().map(|obj| obj as Rc<dyn Var>).collect::<Vec<_>>();
                             if instances.is_empty() {
@@ -323,7 +323,7 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
                     let parent_predicate = if class_path.is_empty() {
                         scp.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in parent path", predicate_name)))?
                     } else {
-                        let class = get_type_by_path(scp.clone(), class_path)?.as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in parent path", class_path.join("."))))?;
+                        let class = get_type_by_path(scp.as_ref(), class_path)?.as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in parent path", class_path.join("."))))?;
                         class.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, class.full_name())))?
                     };
                     pred_hierarchy.push_back(parent_predicate);
@@ -350,7 +350,7 @@ pub fn evaluate(scp: Rc<dyn Scope>, env: Rc<dyn Env>, expr: &Expr) -> Result<Rc<
         Expr::Int(int) => Ok(scp.core().new_int(*int)),
         Expr::Real(num, den) => Ok(scp.core().new_real(*num, *den)),
         Expr::String(string) => Ok(scp.core().new_string(string)),
-        Expr::QualifiedId { ids } => get_var_by_path(&env, ids),
+        Expr::QualifiedId { ids } => get_var_by_path(env.as_ref(), ids),
         Expr::Sum { terms } => {
             let evaluated_terms: Vec<Rc<dyn Var>> = terms.iter().map(|t| evaluate(scp.clone(), env.clone(), t)).collect::<Result<_, _>>()?;
             Ok(scp.core().sum(&evaluated_terms)?)
@@ -443,7 +443,7 @@ pub fn evaluate(scp: Rc<dyn Scope>, env: Rc<dyn Env>, expr: &Expr) -> Result<Rc<
             Ok(Rc::new(BoolExpr::And { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms }))
         }
         Expr::NewObject { class_name, args } => {
-            let class = get_type_by_path(scp.clone(), class_name)?.as_class().ok_or_else(|| RiddleError::NotAClass(class_name.join(".")))?;
+            let class = get_type_by_path(scp.as_ref(), class_name)?.as_class().ok_or_else(|| RiddleError::NotAClass(class_name.join(".")))?;
             let evaluated_args: Vec<Rc<dyn Var>> = args.iter().map(|a| evaluate(scp.clone(), env.clone(), a)).collect::<Result<_, _>>()?;
             let constructor = class.constructor(&evaluated_args.iter().map(|arg| arg.var_type()).collect::<Vec<_>>()).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with specified argument types", class_name.join("."))))?;
             let object = class.clone().new_instance();
