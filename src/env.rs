@@ -90,6 +90,10 @@ impl Object {
     pub(super) fn new(id: ObjectId, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> Self {
         Self { id, class: Rc::downgrade(&class), env: CommonEnv::new(Some(parent_env)) }
     }
+
+    pub fn id(&self) -> ObjectId {
+        self.id
+    }
 }
 
 impl Var for Object {
@@ -127,6 +131,32 @@ pub struct Atom {
     env: CommonEnv,
 }
 
+impl Atom {
+    pub fn new(id: AtomId, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Self {
+        let env = match args.get("tau") {
+            Some(tau) => match tau {
+                Slot::Primitive(_var) => panic!("Tau cannot be a primitive variable"),
+                Slot::ObjectRef(obj_id) => predicate.clone().core().get_object(*obj_id).expect("Object ID in tau does not exist").as_env().expect("Object in tau does not have an environment").clone(),
+                Slot::AtomRef(atom_id) => predicate.clone().core().get_atom(*atom_id).expect("Atom ID in tau does not exist").as_env().expect("Atom in tau does not have an environment").clone(),
+            },
+            None => predicate.clone().core(),
+        };
+        let env = CommonEnv::new(Some(env));
+        for (name, value) in args {
+            env.set(name, value);
+        }
+        Self { id, predicate: Rc::downgrade(&predicate), fact, env }
+    }
+
+    pub fn id(&self) -> AtomId {
+        self.id
+    }
+
+    pub fn is_fact(&self) -> bool {
+        self.fact
+    }
+}
+
 impl Var for Atom {
     fn var_type(&self) -> Rc<dyn Type> {
         self.predicate.upgrade().unwrap()
@@ -152,23 +182,5 @@ impl Env for Atom {
 
     fn set(&self, name: String, value: Slot) {
         self.env.set(name, value);
-    }
-}
-
-impl Atom {
-    pub fn new(id: AtomId, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Self {
-        let env = match args.get("tau") {
-            Some(tau) => match tau {
-                Slot::Primitive(_var) => panic!("Tau cannot be a primitive variable"),
-                Slot::ObjectRef(obj_id) => predicate.clone().core().get_object(*obj_id).expect("Object ID in tau does not exist").as_env().expect("Object in tau does not have an environment").clone(),
-                Slot::AtomRef(atom_id) => predicate.clone().core().get_atom(*atom_id).expect("Atom ID in tau does not exist").as_env().expect("Atom in tau does not have an environment").clone(),
-            },
-            None => predicate.clone().core(),
-        };
-        let env = CommonEnv::new(Some(env));
-        for (name, value) in args {
-            env.set(name, value);
-        }
-        Self { id, predicate: Rc::downgrade(&predicate), fact, env }
     }
 }
