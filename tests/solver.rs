@@ -35,7 +35,6 @@ impl Var for TestVar {
 
 pub struct Solver {
     core: Rc<CommonCore>,
-    slv: Weak<Solver>,
 }
 
 impl Solver {
@@ -45,7 +44,6 @@ impl Solver {
                 let core: Weak<Solver> = core.clone();
                 CommonCore::new(core)
             },
-            slv: core.clone(),
         });
         slv.core.read("real origin, horizon; origin >= 0.0; origin <= horizon;").expect("Failed to read core definitions");
         slv.core.read("predicate Impulse(real at) { at >= origin; at <= horizon; }").expect("Failed to read core definitions");

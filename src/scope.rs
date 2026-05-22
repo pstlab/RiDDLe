@@ -445,7 +445,6 @@ impl Constructor {
 
     /// Creates a new object instance and runs constructor statements.
     pub fn call(&self, object: Rc<dyn Var>, args: Vec<Rc<dyn Var>>) -> Result<Rc<dyn Var>, RiddleError> {
-        println!("Calling constructor {}", self);
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
@@ -768,7 +767,6 @@ impl Type for CommonClass {
     }
 
     fn new_instance(self: Rc<Self>) -> Rc<dyn Var> {
-        println!("Creating instance of class '{}'", self.full_name());
         let instance = Rc::new(Object::new(self.clone(), None));
         self.instances.borrow_mut().push(instance.clone());
         for parent in &self.parents {
