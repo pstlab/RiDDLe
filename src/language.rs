@@ -1,5 +1,5 @@
 use crate::{
-    env::{BoolExpr, CommonEnv, Env, Var, to_cnf},
+    env::{BoolExpr, CommonEnv, Env, Var, get_var_by_path, to_cnf},
     scope::{Scope, get_type_by_path, is_assignable_from},
 };
 use std::{
@@ -260,10 +260,9 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
                 env.set(name[0].clone(), value);
                 Ok(())
             } else {
-                let (first, rest) = name.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty assignment path".into()))?;
-                let root = env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?;
-                let (last, rest) = rest.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty assignment path".into()))?;
-                rest.iter().try_fold(root, |acc, id| acc.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(id.to_string()))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Member '{}' in path", id))))?.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(last.to_string()))?.set(last.to_string(), value);
+                let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty assignment path".into()))?;
+                let var = get_var_by_path(&env, rest)?;
+                var.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(last.to_string()))?.set(last.to_string(), value);
                 Ok(())
             }
         }
@@ -284,14 +283,7 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             Ok(())
         }
         Statement::Formula { is_fact, name, tau, predicate_name, args } => {
-            let tau = if tau.is_empty() {
-                None
-            } else {
-                let (first, rest) = tau.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty identifier path".into()))?;
-                let root = env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?;
-                let root = rest.iter().try_fold(root, |acc, id| acc.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(id.to_string()))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Member '{}' in path", id))))?;
-                Some(root)
-            };
+            let tau = if tau.is_empty() { None } else { Some(get_var_by_path(&env, tau)?) };
             let predicate = if let Some(tau) = tau.clone() {
                 tau.as_ref().var_type().as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", tau.var_type().full_name())))?.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, tau.var_type().full_name())))?
             } else {
@@ -358,11 +350,7 @@ pub fn evaluate(scp: Rc<dyn Scope>, env: Rc<dyn Env>, expr: &Expr) -> Result<Rc<
         Expr::Int(int) => Ok(scp.core().new_int(*int)),
         Expr::Real(num, den) => Ok(scp.core().new_real(*num, *den)),
         Expr::String(string) => Ok(scp.core().new_string(string)),
-        Expr::QualifiedId { ids } => {
-            let (first, rest) = ids.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty identifier path".into()))?;
-            let root = env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?;
-            rest.iter().try_fold(root, |acc, id| acc.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(id.to_string()))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Member '{}' in path", id))))
-        }
+        Expr::QualifiedId { ids } => get_var_by_path(&env, ids),
         Expr::Sum { terms } => {
             let evaluated_terms: Vec<Rc<dyn Var>> = terms.iter().map(|t| evaluate(scp.clone(), env.clone(), t)).collect::<Result<_, _>>()?;
             Ok(scp.core().sum(&evaluated_terms)?)

@@ -1,4 +1,7 @@
-use crate::scope::{BoolType, Predicate, Scope, Type};
+use crate::{
+    language::RiddleError,
+    scope::{BoolType, Predicate, Scope, Type},
+};
 use std::{
     any::Any,
     cell::RefCell,
@@ -241,4 +244,9 @@ fn distribute(expr: Rc<dyn Var>) -> Rc<BoolExpr> {
 
 pub(crate) fn to_cnf(expr: Rc<dyn Var>) -> Rc<BoolExpr> {
     distribute(push_negations(expr))
+}
+
+pub fn get_var_by_path(env: &Rc<dyn Env>, path: &[String]) -> Result<Rc<dyn Var>, RiddleError> {
+    let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
+    rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| acc.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(first.to_string()))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path", id))))
 }
