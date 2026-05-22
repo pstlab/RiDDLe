@@ -2,6 +2,7 @@ use ::core::fmt;
 
 pub mod core;
 pub mod env;
+pub mod language;
 pub mod scope;
 
 #[derive(Debug)]

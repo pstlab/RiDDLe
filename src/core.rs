@@ -1,6 +1,7 @@
 use crate::{
     RiddleError,
-    env::{Atom, AtomId, CommonEnv, Env, Object, ObjectId, Slot},
+    env::{Atom, AtomId, BoolExpr, CommonEnv, Env, Object, ObjectId, Slot},
+    language::Disjunction,
     scope::{BoolType, CommonScope, IntType, Predicate, RealType, Scope, StringType, Type},
 };
 use std::{
@@ -24,7 +25,11 @@ pub trait Core: Scope + Env {
     fn mul(&self, mul: &[Slot]) -> Result<Slot, RiddleError>;
     fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError>;
 
-    fn new_object(&self, class: Rc<dyn Type>, parent_env: Option<Rc<dyn Env>>) -> ObjectId;
+    fn assert(&self, term: Rc<BoolExpr>) -> bool;
+    fn new_var(&self, class: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError>;
+    fn new_disjunction(&self, disjunction: Disjunction);
+
+    fn new_object(&self, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> ObjectId;
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>>;
     fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId;
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>>;
@@ -57,7 +62,7 @@ impl CommonCore {
         self.scope.types.borrow_mut().insert(class.name().to_string(), class);
     }
 
-    pub fn new_object(&self, class: Rc<dyn Type>, parent_env: Option<Rc<dyn Env>>) -> ObjectId {
+    pub fn new_object(&self, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> ObjectId {
         let id = ObjectId(self.objects.borrow().len());
         self.objects.borrow_mut().push(Rc::new(Object::new(id, class, parent_env)));
         id

@@ -87,8 +87,8 @@ pub struct Object {
 }
 
 impl Object {
-    pub(super) fn new(id: ObjectId, class: Rc<dyn Type>, parent_env: Option<Rc<dyn Env>>) -> Self {
-        Self { id, class: Rc::downgrade(&class), env: CommonEnv::new(parent_env) }
+    pub(super) fn new(id: ObjectId, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> Self {
+        Self { id, class: Rc::downgrade(&class), env: CommonEnv::new(Some(parent_env)) }
     }
 }
 
