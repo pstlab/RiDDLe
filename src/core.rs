@@ -129,6 +129,10 @@ impl Scope for CommonCore {
         None
     }
 
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
+    }
+
     fn get_field(&self, _name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(_name)
     }
@@ -284,8 +288,12 @@ mod tests {
             None
         }
 
+        fn get_fields(&self) -> Vec<Rc<Field>> {
+            self.core.get_fields()
+        }
+
         fn get_field(&self, _name: &str) -> Option<Rc<Field>> {
-            None
+            self.core.get_field(_name)
         }
 
         fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {

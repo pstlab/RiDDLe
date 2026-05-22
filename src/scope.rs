@@ -172,6 +172,7 @@ pub trait Scope {
     fn core(self: Rc<Self>) -> Rc<dyn Core>;
     fn scope(&self) -> Option<Rc<dyn Scope>>;
 
+    fn get_fields(&self) -> Vec<Rc<Field>>;
     fn get_field(&self, name: &str) -> Option<Rc<Field>>;
     fn get_method(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Method>>;
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>>;
@@ -271,6 +272,10 @@ impl Scope for CommonScope {
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
         self.scope.as_ref()?.upgrade()
+    }
+
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.fields.borrow().values().cloned().collect()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
@@ -387,6 +392,10 @@ impl Scope for Method {
         self.scope.scope.as_ref()?.upgrade()
     }
 
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
+    }
+
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(name)
     }
@@ -436,11 +445,13 @@ impl Constructor {
 
     /// Creates a new object instance and runs constructor statements.
     pub fn call(&self, object: Rc<dyn Var>, args: Vec<Rc<dyn Var>>) -> Result<Rc<dyn Var>, RiddleError> {
+        println!("Calling constructor {}", self);
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
-        let class = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).ok_or_else(|| RiddleError::RuntimeError("Constructor is not defined within a class".into()))?;
-        let constructor_env = Rc::new(CommonEnv::new(Some(object.clone().as_env().unwrap())));
+        let obj_env = object.clone().as_env().ok_or_else(|| RiddleError::RuntimeError("Constructor can only be called on an object".into()))?;
+        // the context in which the constructor is invoked..
+        let constructor_env = Rc::new(CommonEnv::new(Some(obj_env.clone())));
         constructor_env.set("this".to_string(), object.clone());
         for ((arg_type, arg_name), arg_value) in self.args.iter().zip(args) {
             if !arg_value.var_type().full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
@@ -448,6 +459,9 @@ impl Constructor {
             }
             constructor_env.set(arg_name.clone(), arg_value);
         }
+
+        let class = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).ok_or_else(|| RiddleError::RuntimeError("Constructor is not defined within a class".into()))?;
+        // we first execute parent constructors in declaration order, passing specified arguments or defaults if provided..
         for parent in class.parents() {
             let (first_class, nested_classes) = parent.split_first().expect("Parent class name should not be empty");
             let parent_class = nested_classes
@@ -464,6 +478,35 @@ impl Constructor {
             }
         }
 
+        // we then populate fields declared in this class..
+        for field in class.get_fields() {
+            println!("Initializing field '{}' of type '{}'", field.name(), field.field_type().join("."));
+            let (first, rest) = field.field_type().split_first().ok_or_else(|| RiddleError::RuntimeError("Empty field type path".into()))?;
+            let fld_tp = self.scope.get_type(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?;
+            rest.iter().try_fold(fld_tp.clone(), |acc, id| acc.as_class().ok_or_else(|| RiddleError::NotAClass(first.to_string()))?.get_type(id).ok_or_else(|| RiddleError::NotFound(format!("Class '{}' in path", id))))?;
+            if obj_env.get(field.name()).is_none() {
+                if let Some(default_expr) = field.default() {
+                    let value = evaluate(self.scope.clone(), constructor_env.clone(), default_expr)?;
+                    if !is_assignable_from(&fld_tp, &value.var_type()) {
+                        return Err(RiddleError::TypeError(format!("Default value for field '{}' is of type '{}', expected '{}'", field.name(), value.var_type().name(), fld_tp.name())));
+                    }
+                    obj_env.set(field.name().to_string(), value);
+                } else if let Some(class) = fld_tp.clone().as_class() {
+                    let instances = class.instances().into_iter().map(|obj| obj as Rc<dyn Var>).collect::<Vec<_>>();
+                    if instances.is_empty() {
+                        return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", field.name(), class.full_name())));
+                    } else if instances.len() == 1 {
+                        obj_env.set(field.name().to_string(), instances[0].clone());
+                    } else {
+                        obj_env.set(field.name().to_string(), self.scope.clone().core().new_var(class, instances.as_slice())?);
+                    }
+                } else {
+                    obj_env.set(field.name().to_string(), fld_tp.clone().new_instance());
+                }
+            }
+        }
+
+        // finally, we execute constructor statements in the context of the new object..
         for stmt in &self.statements {
             execute(self.scope.clone(), constructor_env.clone(), stmt)?;
         }
@@ -480,6 +523,10 @@ impl Scope for Constructor {
         self.scope.scope.as_ref()?.upgrade()
     }
 
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
+    }
+
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(name)
     }
@@ -494,6 +541,14 @@ impl Scope for Constructor {
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
         self.scope.get_predicate(name)
+    }
+}
+
+impl fmt::Display for Constructor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let class_name = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).map(|c| c.full_name()).unwrap_or_else(|| "<unknown class>".to_string());
+        let args = self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", ");
+        write!(f, "{}({})", class_name, args)
     }
 }
 
@@ -615,6 +670,10 @@ impl Scope for Predicate {
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
         self.scope.scope.as_ref()?.upgrade()
+    }
+
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
@@ -745,6 +804,10 @@ impl Scope for CommonClass {
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
         self.scope.scope.as_ref()?.upgrade()
+    }
+
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {

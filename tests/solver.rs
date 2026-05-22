@@ -64,6 +64,9 @@ impl Scope for Solver {
         None
     }
 
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.core.get_fields()
+    }
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.core.get_field(name)
     }
