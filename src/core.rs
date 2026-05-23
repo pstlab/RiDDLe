@@ -177,12 +177,18 @@ mod tests {
     use std::any::Any;
 
     struct TestObject {
-        class: Weak<dyn Type>,
+        tp: Weak<dyn Type>,
+    }
+
+    impl TestObject {
+        fn new(var_type: Rc<dyn Type>) -> Self {
+            Self { tp: Rc::downgrade(&var_type) }
+        }
     }
 
     impl Var for TestObject {
         fn var_type(&self) -> Rc<dyn Type> {
-            self.class.upgrade().expect("Class should still exist")
+            self.tp.upgrade().expect("Class should still exist")
         }
 
         fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
@@ -211,33 +217,33 @@ mod tests {
 
     impl Core for TestCore {
         fn new_bool(&self, _value: bool) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.bool_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.bool_type())))
         }
         fn new_bool_var(&self) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.bool_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.bool_type())))
         }
         fn new_int(&self, _value: i64) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.int_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.int_type())))
         }
         fn new_int_var(&self) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.int_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.int_type())))
         }
         fn new_real(&self, _num: i64, _den: i64) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.real_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.real_type())))
         }
         fn new_real_var(&self) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.real_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.real_type())))
         }
         fn new_string(&self, _value: &str) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.string_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.string_type())))
         }
         fn new_string_var(&self) -> Slot {
-            Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(self.string_type() as Rc<dyn Type>)) }))
+            Slot::Primitive(Rc::new(TestObject::new(self.string_type())))
         }
 
         fn sum(&self, sum: &[Slot]) -> Result<Slot, RiddleError> {
             let tp = arith_class(self, sum)?;
-            Ok(Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(tp as Rc<dyn Type>)) })))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn opposite(&self, term: Slot) -> Result<Slot, RiddleError> {
             let tp = match term {
@@ -245,15 +251,15 @@ mod tests {
                 Slot::ObjectRef(id) => self.get_object(id).expect("Object should exist").class(),
                 Slot::AtomRef(id) => self.get_atom(id).expect("Atom should exist").predicate(),
             };
-            Ok(Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&tp) })))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn mul(&self, mul: &[Slot]) -> Result<Slot, RiddleError> {
             let tp = arith_class(self, mul)?;
-            Ok(Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(tp as Rc<dyn Type>)) })))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError> {
             let tp = arith_class(self, &[left, right])?;
-            Ok(Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&(tp as Rc<dyn Type>)) })))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
 
         fn assert(&self, _term: Rc<BoolExpr>) -> bool {
@@ -264,7 +270,7 @@ mod tests {
             if instances.is_empty() {
                 return Err(RiddleError::InconsistencyError("Cannot create variable with no instances".into()));
             }
-            Ok(Slot::Primitive(Rc::new(TestObject { class: Rc::downgrade(&class) })))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(class))))
         }
         fn new_disjunction(&self, _disjunction: Disjunction) {}
 
