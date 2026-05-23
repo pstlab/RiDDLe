@@ -678,10 +678,18 @@ impl Class for CommonClass {
 ///
 /// If all terms are int the result is int, otherwise mixed int/real terms yield
 /// real. Any other type combination results in a type error.
-pub fn arith_class(cr: &dyn Core, terms: &[Rc<dyn Var>]) -> Result<Rc<dyn Type>, RiddleError> {
-    if terms.iter().all(|t| t.var_type().name() == "int") {
+pub fn arith_class(cr: &dyn Core, terms: &[Slot]) -> Result<Rc<dyn Type>, RiddleError> {
+    let types = terms
+        .iter()
+        .map(|t| match t {
+            Slot::Primitive(p) => Ok(p.var_type()),
+            Slot::ObjectRef(obj_id) => Err(RiddleError::TypeError(format!("Expected numeric type, got object reference to object with ID {}", obj_id.0))),
+            Slot::AtomRef(atom_id) => Err(RiddleError::TypeError(format!("Expected numeric type, got atom reference to atom with ID {}", atom_id.0))),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if types.iter().all(|t| t.name() == "int") {
         Ok(cr.get_type("int").expect("int class not found"))
-    } else if terms.iter().all(|t| t.var_type().name() == "int" || t.var_type().name() == "real") {
+    } else if types.iter().all(|t| t.name() == "int" || t.name() == "real") {
         Ok(cr.get_type("real").expect("real class not found"))
     } else {
         Err(RiddleError::TypeError("Invalid types for arithmetic operation".into()))
