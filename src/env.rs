@@ -272,7 +272,7 @@ pub(crate) fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
 pub fn get_var_by_path(core: &dyn Core, env: &dyn Env, path: &[String]) -> Result<Slot, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
     rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| match acc {
-        Slot::Primitive(var) => Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in path is a primitive variable, cannot access '{}'", first, id))),
+        Slot::Primitive(_var) => Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in path is a primitive variable, cannot access '{}'", first, id))),
         Slot::ObjectRef(obj_id) => {
             let obj = core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
             obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object with id {}", id, obj_id.0)))

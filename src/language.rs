@@ -194,7 +194,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty assignment path".into()))?;
                 let var = get_var_by_path(scp.core().as_ref(), env.as_ref(), rest)?;
                 match &var {
-                    Slot::Primitive(_) => return Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in assignment path is a primitive variable, cannot assign to '{}'", rest.join("."), last))),
+                    Slot::Primitive(_) => Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in assignment path is a primitive variable, cannot assign to '{}'", rest.join("."), last))),
                     Slot::ObjectRef(obj_id) => {
                         let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
                         obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?.set(last.to_string(), value);

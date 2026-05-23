@@ -285,7 +285,7 @@ impl Scope for CommonScope {
                             return false;
                         }
                         for (class, arg_type) in types.iter().zip(m.args().iter().map(|(t, _)| t)) {
-                            if !get_type_by_path(self, arg_type).ok().map_or(false, |t| is_assignable_from(&t, class)) {
+                            if !get_type_by_path(self, arg_type).ok().is_some_and(|t| is_assignable_from(&t, class)) {
                                 return false;
                             }
                         }
@@ -334,7 +334,7 @@ impl Constructor {
         let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {} not found", object.0)))?.as_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
         // the context in which the constructor is invoked..
         let constructor_env = Rc::new(CommonEnv::new(Some(obj_env.clone())));
-        constructor_env.set("this".to_string(), Slot::ObjectRef(object.clone()));
+        constructor_env.set("this".to_string(), Slot::ObjectRef(object));
         for ((arg_type, arg_name), arg_value) in self.args.iter().zip(args) {
             let expected_type = get_type_by_path(self.scope.as_ref(), arg_type)?;
             let arg_value_type = match &arg_value {
@@ -363,10 +363,10 @@ impl Constructor {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 let constructor = parent_class.constructor(&types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for parent class '{}' with specified argument types", parent_class.full_name())))?;
-                constructor.call(object.clone(), exprs)?;
+                constructor.call(object, exprs)?;
             } else {
                 let constructor = parent_class.constructor(&[]).ok_or_else(|| RiddleError::NotFound(format!("No-arg constructor for parent class '{}'", parent_class.full_name())))?;
-                constructor.call(object.clone(), vec![])?;
+                constructor.call(object, vec![])?;
             }
         }
 
@@ -390,7 +390,7 @@ impl Constructor {
                     if instances.is_empty() {
                         return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", field.name(), class.full_name())));
                     } else if instances.len() == 1 {
-                        obj_env.set(field.name().to_string(), Slot::ObjectRef(instances[0].clone()));
+                        obj_env.set(field.name().to_string(), Slot::ObjectRef(instances[0]));
                     } else {
                         obj_env.set(field.name().to_string(), self.scope.clone().core().new_var(class, &instances)?);
                     }
@@ -587,10 +587,10 @@ impl Type for CommonClass {
 
     fn new_instance(self: Rc<Self>) -> Slot {
         let instance = self.core().new_object(self.clone());
-        self.instances.borrow_mut().push(instance.clone());
+        self.instances.borrow_mut().push(instance);
         for parent in &self.parents {
             let parent_class = get_type_by_path(self.as_ref(), parent).expect("Parent class should exist").as_class().expect("Parent class should be a class");
-            parent_class.as_any().downcast_ref::<CommonClass>().expect("Parent class should be a CommonClass").instances.borrow_mut().push(instance.clone());
+            parent_class.as_any().downcast_ref::<CommonClass>().expect("Parent class should be a CommonClass").instances.borrow_mut().push(instance);
         }
         Slot::ObjectRef(instance)
     }
