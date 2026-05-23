@@ -1,8 +1,8 @@
 use crate::{
     RiddleError,
     core::Core,
-    env::{BoolExpr, ObjectId, Slot},
-    language::{Expr, Statement},
+    env::{Atom, AtomId, BoolExpr, ObjectId, Slot},
+    language::{Expr, Statement, execute},
 };
 use std::{
     any::Any,
@@ -214,11 +214,21 @@ pub struct Predicate {
     name: String,
     parents: Vec<Vec<String>>,
     args: Vec<(Vec<String>, String)>,
+    statements: Vec<Statement>,
+    atoms: RefCell<Vec<AtomId>>,
 }
 
 impl Predicate {
     pub fn new(core: Weak<dyn Core>, scope: CommonScope, name: String) -> Self {
-        Self { core, scope, name, parents: Vec::new(), args: Vec::new() }
+        Self {
+            core,
+            scope,
+            name,
+            parents: Vec::new(),
+            args: Vec::new(),
+            statements: Vec::new(),
+            atoms: RefCell::new(Vec::new()),
+        }
     }
 
     pub fn parents(&self) -> &[Vec<String>] {
@@ -227,6 +237,23 @@ impl Predicate {
 
     pub fn args(&self) -> &[(Vec<String>, String)] {
         &self.args
+    }
+
+    pub fn statements(&self) -> &[Statement] {
+        &self.statements
+    }
+
+    /// Executes predicate statements against a concrete atom.
+    pub fn call(self: Rc<Self>, atom: Rc<Atom>) -> Result<(), RiddleError> {
+        let scope: Rc<dyn Scope> = self.clone();
+        for stmt in &self.statements {
+            execute(&scope, atom.clone(), stmt)?;
+        }
+        Ok(())
+    }
+
+    pub fn atoms(&self) -> Vec<AtomId> {
+        self.atoms.borrow().clone()
     }
 }
 

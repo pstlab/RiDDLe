@@ -9,6 +9,45 @@ use std::{
     rc::Rc,
 };
 
+pub struct ProblemDef {
+    pub methods: Vec<MethodDef>,
+    pub predicates: Vec<PredicateDef>,
+    pub classes: Vec<ClassDef>,
+    pub statements: Vec<Statement>,
+}
+
+pub type FieldDef = (Vec<String>, Vec<(String, Option<Expr>)>); // (type, [(name, optional initializer)])
+
+pub struct ClassDef {
+    pub name: String,
+    pub parents: Vec<Vec<String>>,
+    pub fields: Vec<FieldDef>,
+    pub constructors: Vec<ConstructorDef>,
+    pub methods: Vec<MethodDef>,
+    pub predicates: Vec<PredicateDef>,
+    pub classes: Vec<ClassDef>,
+}
+
+pub struct ConstructorDef {
+    pub args: Vec<(Vec<String>, String)>,
+    pub init: Vec<(Vec<String>, Vec<Expr>)>,
+    pub statements: Vec<Statement>,
+}
+
+pub struct MethodDef {
+    pub return_type: Option<Vec<String>>,
+    pub name: String,
+    pub args: Vec<(Vec<String>, String)>,
+    pub statements: Vec<Statement>,
+}
+
+pub struct PredicateDef {
+    pub name: String,
+    pub args: Vec<(Vec<String>, String)>,
+    pub parents: Vec<Vec<String>>,
+    pub statements: Vec<Statement>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Expr(Expr),
