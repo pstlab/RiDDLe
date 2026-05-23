@@ -299,7 +299,6 @@ impl Scope for CommonScope {
 
 /// Executable constructor declaration.
 pub struct Constructor {
-    core: Weak<dyn Core>,
     scope: Rc<CommonScope>,
     args: Vec<(Vec<String>, String)>,
     init: Vec<(Vec<String>, Vec<Expr>)>,
@@ -310,7 +309,6 @@ impl Constructor {
     /// Creates a constructor from its parsed definition.
     pub fn new(core: Weak<dyn Core>, scope: Weak<dyn Class>, mut constructor: ConstructorDef) -> Self {
         Self {
-            core: core.clone(),
             args: std::mem::take(&mut constructor.args),
             statements: std::mem::take(&mut constructor.statements),
             init: std::mem::take(&mut constructor.init),
@@ -411,11 +409,11 @@ impl Constructor {
 
 impl Scope for Constructor {
     fn core(&self) -> Rc<dyn Core> {
-        self.core.upgrade().expect("Core should never be dropped while scopes exist")
+        self.scope.core()
     }
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
-        self.scope.scope.as_ref()?.upgrade()
+        self.scope.scope()
     }
 
     fn get_fields(&self) -> Vec<Rc<Field>> {
@@ -448,7 +446,6 @@ impl fmt::Display for Constructor {
 }
 
 pub struct Method {
-    core: Weak<dyn Core>,
     scope: Rc<CommonScope>,
     name: String,
     return_type: Option<Vec<String>>,
@@ -460,7 +457,6 @@ impl Method {
     /// Creates a method from its parsed definition.
     pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, mut method: MethodDef) -> Rc<Self> {
         Rc::new(Self {
-            core: core.clone(),
             name: std::mem::take(&mut method.name),
             return_type: std::mem::take(&mut method.return_type),
             args: std::mem::take(&mut method.args),
@@ -537,7 +533,6 @@ pub trait Class: Type + Scope {
 }
 
 pub struct CommonClass {
-    core: Weak<dyn Core>,
     scope: Rc<CommonScope>,
     name: String,
     parents: Vec<Vec<String>>,
@@ -552,7 +547,6 @@ impl CommonClass {
         let parents = std::mem::take(&mut class.parents);
         let constructors_def = if class.constructors.is_empty() { vec![ConstructorDef { args: Vec::new(), init: Vec::new(), statements: Vec::new() }] } else { std::mem::take(&mut class.constructors) };
         Rc::new_cyclic(move |weak_self: &Weak<CommonClass>| Self {
-            core: core.clone(),
             name,
             parents,
             constructors: constructors_def.into_iter().map(|c| Constructor::new(core.clone(), weak_self.clone(), c)).collect(),
@@ -598,11 +592,11 @@ impl Type for CommonClass {
 
 impl Scope for CommonClass {
     fn core(&self) -> Rc<dyn Core> {
-        self.core.upgrade().expect("Core should never be dropped while scopes exist")
+        self.scope.core()
     }
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
-        self.scope.scope.as_ref()?.upgrade()
+        self.scope.scope()
     }
 
     fn as_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
@@ -664,7 +658,7 @@ impl Class for CommonClass {
     fn instances(&self) -> Vec<ObjectId> {
         let mut instances = self.instances.borrow().clone();
         for parent in &self.parents {
-            if let Some(parent_class) = self.core.upgrade().unwrap().get_type(&parent.join("."))
+            if let Some(parent_class) = self.core().get_type(&parent.join("."))
                 && let Some(parent_class) = parent_class.as_class()
             {
                 instances.extend(parent_class.instances());
@@ -722,7 +716,6 @@ pub fn is_assignable_from(target: &Rc<dyn Type>, source: &Rc<dyn Type>) -> bool 
 }
 
 pub struct Predicate {
-    core: Weak<dyn Core>,
     scope: CommonScope,
     name: String,
     parents: Vec<Vec<String>>,
@@ -735,7 +728,6 @@ impl Predicate {
     /// Creates a predicate from its parsed definition.
     pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, mut predicate: PredicateDef) -> Rc<Self> {
         Rc::new(Self {
-            core: core.clone(),
             name: std::mem::take(&mut predicate.name),
             parents: std::mem::take(&mut predicate.parents),
             args: std::mem::take(&mut predicate.args),
@@ -787,7 +779,7 @@ impl Type for Predicate {
 
 impl Scope for Predicate {
     fn core(&self) -> Rc<dyn Core> {
-        self.core.upgrade().expect("Core should never be dropped while predicates exist")
+        self.scope.core()
     }
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
