@@ -2,7 +2,7 @@ use crate::{
     RiddleError,
     env::{Atom, AtomId, BoolExpr, CommonEnv, Env, Object, ObjectId, Slot},
     language::Disjunction,
-    scope::{BoolType, CommonScope, IntType, Predicate, RealType, Scope, StringType, Type},
+    scope::{BoolType, Class, CommonScope, IntType, Predicate, RealType, Scope, StringType, Type},
 };
 use std::{
     cell::RefCell,
@@ -62,7 +62,7 @@ impl CommonCore {
         self.scope.types.borrow_mut().insert(class.name().to_string(), class);
     }
 
-    pub fn new_object(&self, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> ObjectId {
+    pub fn new_object(&self, class: Rc<dyn Class>, parent_env: Rc<dyn Env>) -> ObjectId {
         let id = ObjectId(self.objects.borrow().len());
         self.objects.borrow_mut().push(Rc::new(Object::new(id, class, parent_env)));
         id
@@ -85,7 +85,11 @@ impl Scope for CommonCore {
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-        self.scope.types.borrow().get(name).cloned()
+        self.scope.get_type(name)
+    }
+
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
+        self.scope.get_predicate(name)
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
     core::Core,
-    scope::{BoolType, Predicate, Scope, Type},
+    scope::{BoolType, Class, Predicate, Scope, Type},
 };
 use core::fmt;
 use std::{
@@ -97,12 +97,12 @@ impl Var for BoolExpr {
 
 pub struct Object {
     id: ObjectId,
-    class: Weak<dyn Type>,
+    class: Weak<dyn Class>,
     env: CommonEnv,
 }
 
 impl Object {
-    pub(super) fn new(id: ObjectId, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> Self {
+    pub(super) fn new(id: ObjectId, class: Rc<dyn Class>, parent_env: Rc<dyn Env>) -> Self {
         Self { id, class: Rc::downgrade(&class), env: CommonEnv::new(Some(parent_env)) }
     }
 
@@ -110,7 +110,7 @@ impl Object {
         self.id
     }
 
-    pub fn class(&self) -> Rc<dyn Type> {
+    pub fn class(&self) -> Rc<dyn Class> {
         self.class.upgrade().unwrap()
     }
 }

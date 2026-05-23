@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
     core::Core,
-    env::{BoolExpr, Slot},
+    env::{BoolExpr, ObjectId, Slot},
     language::{Expr, Statement},
 };
 use std::{
@@ -129,18 +129,20 @@ pub trait Scope {
     fn scope(&self) -> Option<Rc<dyn Scope>>;
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>>;
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>>;
 }
 
 pub struct CommonScope {
     core: Weak<dyn Core>,
     scope: Option<Weak<dyn Scope>>,
     pub(crate) types: RefCell<HashMap<String, Rc<dyn Type>>>,
+    predicates: RefCell<HashMap<String, Rc<Predicate>>>,
 }
 
 impl CommonScope {
     /// Creates an empty scope with an optional parent scope.
     pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>) -> Self {
-        Self { core, scope, types: RefCell::new(HashMap::new()) }
+        Self { core, scope, types: RefCell::new(HashMap::new()), predicates: RefCell::new(HashMap::new()) }
     }
 }
 
@@ -155,6 +157,10 @@ impl Scope for CommonScope {
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.types.borrow().get(name).cloned().or_else(|| self.scope()?.get_type(name))
+    }
+
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
+        self.predicates.borrow().get(name).cloned().or_else(|| self.scope()?.get_predicate(name))
     }
 }
 
@@ -174,7 +180,7 @@ pub trait Class: Type + Scope {
     fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<&Constructor>;
     fn predicates(&self) -> Vec<Rc<Predicate>>;
     fn classes(&self) -> Vec<Rc<dyn Class>>;
-    fn instances(&self) -> Vec<Slot>;
+    fn instances(&self) -> Vec<ObjectId>;
 }
 
 /// Returns whether a value of source type can be assigned to target.
@@ -206,6 +212,22 @@ pub struct Predicate {
     core: Weak<dyn Core>,
     scope: CommonScope,
     name: String,
+    parents: Vec<Vec<String>>,
+    args: Vec<(Vec<String>, String)>,
+}
+
+impl Predicate {
+    pub fn new(core: Weak<dyn Core>, scope: CommonScope, name: String) -> Self {
+        Self { core, scope, name, parents: Vec::new(), args: Vec::new() }
+    }
+
+    pub fn parents(&self) -> &[Vec<String>] {
+        &self.parents
+    }
+
+    pub fn args(&self) -> &[(Vec<String>, String)] {
+        &self.args
+    }
 }
 
 impl Type for Predicate {
@@ -233,6 +255,10 @@ impl Scope for Predicate {
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.scope.get_type(name)
+    }
+
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
+        self.scope.get_predicate(name)
     }
 }
 
