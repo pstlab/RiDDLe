@@ -76,7 +76,7 @@ impl CommonCore {
 }
 
 impl Scope for CommonCore {
-    fn core(self: Rc<Self>) -> Rc<dyn Core> {
+    fn core(&self) -> Rc<dyn Core> {
         self.scope.clone().core()
     }
 

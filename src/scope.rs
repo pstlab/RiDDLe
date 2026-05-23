@@ -1,6 +1,8 @@
 use crate::{
+    RiddleError,
     core::Core,
     env::{BoolExpr, Slot},
+    language::{Expr, Statement},
 };
 use std::{
     any::Any,
@@ -15,6 +17,9 @@ pub trait Type {
         self.name().to_string()
     }
     fn as_any(self: Rc<Self>) -> Rc<dyn Any>;
+    fn as_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
+        None
+    }
 
     fn new_instance(self: Rc<Self>) -> Slot;
 }
@@ -120,7 +125,7 @@ impl Type for StringType {
 }
 
 pub trait Scope {
-    fn core(self: Rc<Self>) -> Rc<dyn Core>;
+    fn core(&self) -> Rc<dyn Core>;
     fn scope(&self) -> Option<Rc<dyn Scope>>;
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>>;
@@ -140,7 +145,7 @@ impl CommonScope {
 }
 
 impl Scope for CommonScope {
-    fn core(self: Rc<Self>) -> Rc<dyn Core> {
+    fn core(&self) -> Rc<dyn Core> {
         self.core.upgrade().expect("Core should never be dropped while scopes exist")
     }
 
@@ -151,6 +156,50 @@ impl Scope for CommonScope {
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.types.borrow().get(name).cloned().or_else(|| self.scope()?.get_type(name))
     }
+}
+
+/// Executable constructor declaration.
+pub struct Constructor {
+    core: Weak<dyn Core>,
+    scope: Rc<CommonScope>,
+    args: Vec<(Vec<String>, String)>,
+    init: Vec<(Vec<String>, Vec<Expr>)>,
+    statements: Vec<Statement>,
+}
+
+/// Class-specific API surface layered on top of type and scope behavior.
+pub trait Class: Type + Scope {
+    fn parents(&self) -> &[Vec<String>];
+    fn constructors(&self) -> &[Constructor];
+    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<&Constructor>;
+    fn predicates(&self) -> Vec<Rc<Predicate>>;
+    fn classes(&self) -> Vec<Rc<dyn Class>>;
+    fn instances(&self) -> Vec<Slot>;
+}
+
+/// Returns whether a value of source type can be assigned to target.
+///
+/// The check accepts exact type matches and direct parent/child relationships
+/// between class types.
+pub fn is_assignable_from(target: &Rc<dyn Type>, source: &Rc<dyn Type>) -> bool {
+    if Rc::ptr_eq(target, source) {
+        return true;
+    }
+    if let Some(target_class) = target.clone().as_class()
+        && let Some(source_class) = source.clone().as_class()
+    {
+        for parent in source_class.parents() {
+            if parent.iter().map(|s| s.as_str()).eq(target_class.full_name().split('.')) {
+                return true;
+            }
+        }
+        for parent in target_class.parents() {
+            if parent.iter().map(|s| s.as_str()).eq(source_class.full_name().split('.')) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub struct Predicate {
@@ -174,7 +223,7 @@ impl Type for Predicate {
 }
 
 impl Scope for Predicate {
-    fn core(self: Rc<Self>) -> Rc<dyn Core> {
+    fn core(&self) -> Rc<dyn Core> {
         self.core.upgrade().expect("Core should never be dropped while predicates exist")
     }
 
@@ -185,4 +234,9 @@ impl Scope for Predicate {
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.scope.get_type(name)
     }
+}
+
+pub fn get_type_by_path(scope: &dyn Scope, path: &[String]) -> Result<Rc<dyn Type>, RiddleError> {
+    let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty type path".into()))?;
+    rest.iter().try_fold(scope.get_type(first).ok_or_else(|| RiddleError::NotFound(first.clone()))?, |current, part| current.as_class().ok_or_else(|| RiddleError::NotAClass(first.clone()))?.get_type(part).ok_or_else(|| RiddleError::NotFound(format!("Class '{}' in path", part))))
 }

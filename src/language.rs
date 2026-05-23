@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
-    env::{BoolExpr, Env, Slot, to_cnf},
-    scope::Scope,
+    env::{BoolExpr, Env, ObjectId, Slot, to_cnf},
+    scope::{Scope, Type, get_type_by_path, is_assignable_from},
 };
 use std::{fmt, rc::Rc};
 
@@ -99,6 +99,55 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             } else {
                 Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", expr)))
             }
+        }
+        Statement::LocalField { field_type, fields } => {
+            let fld_tp = get_type_by_path(scp.as_ref(), field_type)?;
+            for (name, default) in fields {
+                if let Some(expr) = default {
+                    let value = evaluate(scp.clone(), env.clone(), expr)?;
+                    match &value {
+                        Slot::Primitive(var) => {
+                            if !is_assignable_from(&fld_tp, &var.var_type()) {
+                                return Err(RiddleError::TypeError(format!("Default value for field '{}' is not assignable to field type '{}'", name, field_type.join("."))));
+                            }
+                        }
+                        Slot::ObjectRef(obj_id) => {
+                            let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
+                            if !is_assignable_from(&fld_tp, &obj.class()) {
+                                return Err(RiddleError::TypeError(format!("Default value for field '{}' is not assignable to field type '{}'", name, field_type.join("."))));
+                            }
+                        }
+                        Slot::AtomRef(atom_id) => {
+                            let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?;
+                            let atom_type: Rc<dyn Type> = atom.predicate();
+                            if !is_assignable_from(&fld_tp, &atom_type) {
+                                return Err(RiddleError::TypeError(format!("Default value for field '{}' is not assignable to field type '{}'", name, field_type.join("."))));
+                            }
+                        }
+                    }
+                    env.set(name.clone(), value);
+                } else if let Some(class) = fld_tp.clone().as_class() {
+                    let instances = class.instances();
+                    if instances.is_empty() {
+                        return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", name, class.full_name())));
+                    } else if instances.len() == 1 {
+                        env.set(name.clone(), instances[0].clone());
+                    } else {
+                        let instances: Vec<ObjectId> = instances
+                            .iter()
+                            .map(|instance| match instance {
+                                Slot::Primitive(_var) => Err(RiddleError::RuntimeError(format!("Field '{}' has multiple instances, but one of them is a primitive variable", name))),
+                                Slot::ObjectRef(obj_id) => Ok(*obj_id),
+                                Slot::AtomRef(_atom_id) => Err(RiddleError::RuntimeError(format!("Field '{}' has multiple instances, but one of them is an atom", name))),
+                            })
+                            .collect::<Result<Vec<_>, _>>()?;
+                        env.set(name.clone(), scp.core().new_var(class, instances.as_slice())?);
+                    }
+                } else {
+                    env.set(name.clone(), fld_tp.clone().new_instance());
+                }
+            }
+            Ok(())
         }
         _ => unimplemented!(),
     }

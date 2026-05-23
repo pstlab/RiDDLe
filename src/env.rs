@@ -105,6 +105,10 @@ impl Object {
     pub fn id(&self) -> ObjectId {
         self.id
     }
+
+    pub fn class(&self) -> Rc<dyn Type> {
+        self.class.upgrade().unwrap()
+    }
 }
 
 impl Var for Object {
@@ -161,6 +165,10 @@ impl Atom {
 
     pub fn id(&self) -> AtomId {
         self.id
+    }
+
+    pub fn predicate(&self) -> Rc<Predicate> {
+        self.predicate.upgrade().unwrap()
     }
 
     pub fn is_fact(&self) -> bool {
