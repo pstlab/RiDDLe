@@ -425,10 +425,10 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                         if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
                             Ok(bool_expr)
                         } else {
-                            Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'or' term")))
+                            Err(RiddleError::RuntimeError("Expected boolean expression in 'or' term".to_string()))
                         }
                     }
-                    _ => Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'or' term"))),
+                    _ => Err(RiddleError::RuntimeError("Expected boolean expression in 'or' term".to_string())),
                 })
                 .collect::<Result<_, _>>()?;
             Ok(Slot::Primitive(Rc::new(BoolExpr::Or { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms })))
@@ -441,10 +441,10 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                         if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
                             Ok(bool_expr)
                         } else {
-                            Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'and' term")))
+                            Err(RiddleError::RuntimeError("Expected boolean expression in 'and' term".to_string()))
                         }
                     }
-                    _ => Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'and' term"))),
+                    _ => Err(RiddleError::RuntimeError("Expected boolean expression in 'and' term".to_string())),
                 })
                 .collect::<Result<_, _>>()?;
             Ok(Slot::Primitive(Rc::new(BoolExpr::And { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms })))
