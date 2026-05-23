@@ -2,7 +2,7 @@ use crate::{
     RiddleError,
     env::{Atom, AtomId, BoolExpr, CommonEnv, Env, Object, ObjectId, Slot},
     language::Disjunction,
-    scope::{BoolType, Class, CommonScope, IntType, Predicate, RealType, Scope, StringType, Type},
+    scope::{BoolType, Class, CommonScope, Field, IntType, Method, Predicate, RealType, Scope, StringType, Type},
 };
 use std::{
     cell::RefCell,
@@ -29,7 +29,7 @@ pub trait Core: Scope + Env {
     fn new_var(&self, class: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError>;
     fn new_disjunction(&self, disjunction: Disjunction);
 
-    fn new_object(&self, class: Rc<dyn Type>, parent_env: Rc<dyn Env>) -> ObjectId;
+    fn new_object(&self, class: Rc<dyn Type>) -> ObjectId;
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>>;
     fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId;
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>>;
@@ -86,6 +86,18 @@ impl Scope for CommonCore {
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
         None
+    }
+
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
+    }
+
+    fn get_field(&self, name: &str) -> Option<Rc<Field>> {
+        self.scope.get_field(name)
+    }
+
+    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
+        self.scope.get_method(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
