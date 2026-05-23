@@ -522,6 +522,36 @@ impl Method {
     }
 }
 
+impl Scope for Method {
+    fn core(&self) -> Rc<dyn Core> {
+        self.scope.core()
+    }
+
+    fn scope(&self) -> Option<Rc<dyn Scope>> {
+        self.scope.scope()
+    }
+
+    fn get_fields(&self) -> Vec<Rc<Field>> {
+        self.scope.get_fields()
+    }
+
+    fn get_field(&self, name: &str) -> Option<Rc<Field>> {
+        self.scope.get_field(name)
+    }
+
+    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
+        self.scope.get_method(name, classes)
+    }
+
+    fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
+        self.scope.get_type(name)
+    }
+
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
+        self.scope.get_predicate(name)
+    }
+}
+
 /// Class-specific API surface layered on top of type and scope behavior.
 pub trait Class: Type + Scope {
     fn parents(&self) -> &[Vec<String>];
