@@ -249,9 +249,43 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
     }
 }
 
-pub fn evaluate(scp: &dyn Scope, _env: &dyn Env, expr: &Expr) -> Result<Slot, RiddleError> {
+pub fn evaluate(scp: &dyn Scope, env: &dyn Env, expr: &Expr) -> Result<Slot, RiddleError> {
     match expr {
         Expr::Bool(bool) => Ok(scp.core().new_bool(*bool)),
+        Expr::Int(int) => Ok(scp.core().new_int(*int)),
+        Expr::Real(num, den) => Ok(scp.core().new_real(*num, *den)),
+        Expr::String(string) => Ok(scp.core().new_string(string)),
+        Expr::QualifiedId { ids } => get_var_by_path(scp.core().as_ref(), env, ids),
+        Expr::Sum { terms } => {
+            let evaluated_terms: Vec<Slot> = terms.iter().map(|t| evaluate(scp, env, t)).collect::<Result<_, _>>()?;
+            Ok(scp.core().sum(&evaluated_terms)?)
+        }
+        Expr::Opposite { term } => {
+            let evaluated_term = evaluate(scp, env, term)?;
+            Ok(scp.core().opposite(evaluated_term)?)
+        }
+        Expr::Not { term } => {
+            let evaluated_term = evaluate(scp, env, term)?;
+            match &evaluated_term {
+                Slot::Primitive(var) => {
+                    if let Ok(bool_expr) = var.clone().as_any().downcast::<BoolExpr>() {
+                        Ok(Slot::Primitive(Rc::new(BoolExpr::Not { var_type: Rc::downgrade(&scp.core().bool_type()), term: bool_expr })))
+                    } else {
+                        Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", evaluated_term)))
+                    }
+                }
+                _ => Err(RiddleError::RuntimeError(format!("Expected a primitive variable for negation, got {}", evaluated_term))),
+            }
+        }
+        Expr::Mul { factors } => {
+            let evaluated_factors: Vec<Slot> = factors.iter().map(|f| evaluate(scp, env, f)).collect::<Result<_, _>>()?;
+            Ok(scp.core().mul(&evaluated_factors)?)
+        }
+        Expr::Div { left, right } => {
+            let evaluated_left = evaluate(scp, env, left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(scp.core().div(evaluated_left, evaluated_right)?)
+        }
         _ => unimplemented!(),
     }
 }

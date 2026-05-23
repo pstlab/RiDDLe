@@ -33,6 +33,10 @@ pub trait Core: Scope + Env {
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>>;
     fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId;
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>>;
+
+    fn bool_type(&self) -> Rc<BoolType> {
+        self.get_type("bool").expect("Core should have bool type").as_any().downcast::<BoolType>().expect("Core bool type should be BoolType")
+    }
 }
 
 pub struct CommonCore {
