@@ -5,7 +5,6 @@ use crate::{
 };
 use std::{
     collections::{HashMap, VecDeque},
-    f32::consts::E,
     fmt,
     rc::Rc,
 };
@@ -361,6 +360,110 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 }
             }
         }
-        _ => unimplemented!("Expression evaluation not implemented yet: {}", expr),
+        Expr::Eq { left, right } => {
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Eq {
+                var_type: Rc::downgrade(&scp.core().bool_type()),
+                left: evaluated_left,
+                right: evaluated_right,
+            })))
+        }
+        Expr::Neq { left, right } => {
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Not {
+                var_type: Rc::downgrade(&scp.core().bool_type()),
+                term: Rc::new(BoolExpr::Eq {
+                    var_type: Rc::downgrade(&scp.core().bool_type()),
+                    left: evaluated_left,
+                    right: evaluated_right,
+                }),
+            })))
+        }
+        Expr::Lt { left, right } => {
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Lt {
+                var_type: Rc::downgrade(&scp.core().bool_type()),
+                left: evaluated_left,
+                right: evaluated_right,
+            })))
+        }
+        Expr::Leq { left, right } => {
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Leq {
+                var_type: Rc::downgrade(&scp.core().bool_type()),
+                left: evaluated_left,
+                right: evaluated_right,
+            })))
+        }
+        Expr::Geq { left, right } => {
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Leq {
+                var_type: Rc::downgrade(&scp.core().bool_type()),
+                left: evaluated_right,
+                right: evaluated_left,
+            })))
+        }
+        Expr::Gt { left, right } => {
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
+            let evaluated_right = evaluate(scp, env, right)?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Lt {
+                var_type: Rc::downgrade(&scp.core().bool_type()),
+                left: evaluated_right,
+                right: evaluated_left,
+            })))
+        }
+        Expr::Or { terms } => {
+            let evaluated_terms: Vec<Rc<BoolExpr>> = terms
+                .iter()
+                .map(|t| match evaluate(scp, env.clone(), t)? {
+                    Slot::Primitive(var) => {
+                        if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
+                            Ok(bool_expr)
+                        } else {
+                            Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'or' term")))
+                        }
+                    }
+                    _ => Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'or' term"))),
+                })
+                .collect::<Result<_, _>>()?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::Or { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms })))
+        }
+        Expr::And { terms } => {
+            let evaluated_terms: Vec<Rc<BoolExpr>> = terms
+                .iter()
+                .map(|t| match evaluate(scp, env.clone(), t)? {
+                    Slot::Primitive(var) => {
+                        if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
+                            Ok(bool_expr)
+                        } else {
+                            Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'and' term")))
+                        }
+                    }
+                    _ => Err(RiddleError::RuntimeError(format!("Expected boolean expression in 'and' term"))),
+                })
+                .collect::<Result<_, _>>()?;
+            Ok(Slot::Primitive(Rc::new(BoolExpr::And { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms })))
+        }
+        Expr::NewObject { class_name, args } => {
+            let class = get_type_by_path(scp, class_name)?.as_class().ok_or_else(|| RiddleError::NotAClass(class_name.join(".")))?;
+            let args = args.iter().map(|a| evaluate(scp, env.clone(), a)).collect::<Result<Vec<_>, _>>()?;
+            let arg_types = args
+                .iter()
+                .map(|a| match a {
+                    Slot::Primitive(var) => Ok(var.var_type()),
+                    Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?.var_type()),
+                    Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?.var_type()),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let constructor = class.constructor(&arg_types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with argument types ({}) not found", class.full_name(), arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))?;
+            let object = scp.core().new_object(class.clone());
+            constructor.call(object, args)?;
+            Ok(Slot::ObjectRef(object))
+        }
     }
 }
