@@ -1,6 +1,6 @@
 use crate::{
     RiddleError,
-    env::{BoolExpr, Env, ObjectId, Slot, to_cnf},
+    env::{BoolExpr, Env, ObjectId, Slot, Var, get_var_by_path, to_cnf},
     scope::{Scope, Type, get_type_by_path, is_assignable_from},
 };
 use std::{fmt, rc::Rc};
@@ -87,10 +87,10 @@ pub struct Disjunction {
     pub disjuncts: Vec<(Vec<Statement>, Expr)>,
 }
 
-pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result<(), RiddleError> {
+pub fn execute(scp: &dyn Scope, env: &dyn Env, stmt: &Statement) -> Result<(), RiddleError> {
     match stmt {
         Statement::Expr(expr) => {
-            let expr = evaluate(scp.clone(), env.clone(), expr)?;
+            let expr = evaluate(scp, env, expr)?;
             if let Slot::Primitive(var) = expr.clone()
                 && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
             {
@@ -101,10 +101,10 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             }
         }
         Statement::LocalField { field_type, fields } => {
-            let fld_tp = get_type_by_path(scp.as_ref(), field_type)?;
+            let fld_tp = get_type_by_path(scp, field_type)?;
             for (name, default) in fields {
                 if let Some(expr) = default {
-                    let value = evaluate(scp.clone(), env.clone(), expr)?;
+                    let value = evaluate(scp, env, expr)?;
                     match &value {
                         Slot::Primitive(var) => {
                             if !is_assignable_from(&fld_tp, &var.var_type()) {
@@ -149,13 +149,36 @@ pub fn execute(scp: Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result
             }
             Ok(())
         }
+        Statement::Assign { name, value } => {
+            let value = evaluate(scp, env, value)?;
+            if name.len() == 1 {
+                env.set(name[0].clone(), value);
+                Ok(())
+            } else {
+                let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty assignment path".into()))?;
+                let var = get_var_by_path(scp.core().as_ref(), env, rest)?;
+                match &var {
+                    Slot::Primitive(_) => return Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in assignment path is a primitive variable, cannot assign to '{}'", rest.join("."), last))),
+                    Slot::ObjectRef(obj_id) => {
+                        let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
+                        obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?.set(last.to_string(), value);
+                        Ok(())
+                    }
+                    Slot::AtomRef(atom_id) => {
+                        let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?;
+                        atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom with id {} does not have an environment", atom_id.0)))?.set(last.to_string(), value);
+                        Ok(())
+                    }
+                }
+            }
+        }
         _ => unimplemented!(),
     }
 }
 
-pub fn evaluate(scp: Rc<dyn Scope>, _env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, RiddleError> {
+pub fn evaluate(scp: &dyn Scope, _env: &dyn Env, expr: &Expr) -> Result<Slot, RiddleError> {
     match expr {
-        Expr::Bool(bool) => Ok(scp.clone().core().new_bool(*bool)),
+        Expr::Bool(bool) => Ok(scp.core().new_bool(*bool)),
         _ => unimplemented!(),
     }
 }
