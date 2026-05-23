@@ -5,6 +5,7 @@ use crate::{
 };
 use std::{
     collections::{HashMap, VecDeque},
+    f32::consts::E,
     fmt,
     rc::Rc,
 };
@@ -133,7 +134,7 @@ pub struct Disjunction {
 pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Result<(), RiddleError> {
     match stmt {
         Statement::Expr(expr) => {
-            let expr = evaluate(scp.as_ref(), env.as_ref(), expr)?;
+            let expr = evaluate(scp.as_ref(), env, expr)?;
             if let Slot::Primitive(var) = expr.clone()
                 && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
             {
@@ -147,7 +148,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             let fld_tp = get_type_by_path(scp.as_ref(), field_type)?;
             for (name, default) in fields {
                 if let Some(expr) = default {
-                    let value = evaluate(scp.as_ref(), env.as_ref(), expr)?;
+                    let value = evaluate(scp.as_ref(), env.clone(), expr)?;
                     match &value {
                         Slot::Primitive(var) => {
                             if !is_assignable_from(&fld_tp, &var.var_type()) {
@@ -186,7 +187,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             Ok(())
         }
         Statement::Assign { name, value } => {
-            let value = evaluate(scp.as_ref(), env.as_ref(), value)?;
+            let value = evaluate(scp.as_ref(), env.clone(), value)?;
             if name.len() == 1 {
                 env.set(name[0].clone(), value);
                 Ok(())
@@ -239,7 +240,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             let mut args: HashMap<String, Slot> = args
                 .iter()
                 .map(|(n, e)| {
-                    let val = evaluate(scp.as_ref(), env.as_ref(), e)?;
+                    let val = evaluate(scp.as_ref(), env.clone(), e)?;
                     Ok((n.clone(), val))
                 })
                 .collect::<Result<_, _>>()?;
@@ -281,22 +282,22 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             Ok(())
         }
         Statement::Return { value } => {
-            let ret = evaluate(scp.as_ref(), env.as_ref(), value)?;
+            let ret = evaluate(scp.as_ref(), env.clone(), value)?;
             env.set("__return".to_string(), ret);
             Ok(())
         }
     }
 }
 
-pub fn evaluate(scp: &dyn Scope, env: &dyn Env, expr: &Expr) -> Result<Slot, RiddleError> {
+pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, RiddleError> {
     match expr {
         Expr::Bool(bool) => Ok(scp.core().new_bool(*bool)),
         Expr::Int(int) => Ok(scp.core().new_int(*int)),
         Expr::Real(num, den) => Ok(scp.core().new_real(*num, *den)),
         Expr::String(string) => Ok(scp.core().new_string(string)),
-        Expr::QualifiedId { ids } => get_var_by_path(scp.core().as_ref(), env, ids),
+        Expr::QualifiedId { ids } => get_var_by_path(scp.core().as_ref(), env.as_ref(), ids),
         Expr::Sum { terms } => {
-            let evaluated_terms: Vec<Slot> = terms.iter().map(|t| evaluate(scp, env, t)).collect::<Result<_, _>>()?;
+            let evaluated_terms: Vec<Slot> = terms.iter().map(|t| evaluate(scp, env.clone(), t)).collect::<Result<_, _>>()?;
             Ok(scp.core().sum(&evaluated_terms)?)
         }
         Expr::Opposite { term } => {
@@ -317,14 +318,49 @@ pub fn evaluate(scp: &dyn Scope, env: &dyn Env, expr: &Expr) -> Result<Slot, Rid
             }
         }
         Expr::Mul { factors } => {
-            let evaluated_factors: Vec<Slot> = factors.iter().map(|f| evaluate(scp, env, f)).collect::<Result<_, _>>()?;
+            let evaluated_factors: Vec<Slot> = factors.iter().map(|f| evaluate(scp, env.clone(), f)).collect::<Result<_, _>>()?;
             Ok(scp.core().mul(&evaluated_factors)?)
         }
         Expr::Div { left, right } => {
-            let evaluated_left = evaluate(scp, env, left)?;
+            let evaluated_left = evaluate(scp, env.clone(), left)?;
             let evaluated_right = evaluate(scp, env, right)?;
             Ok(scp.core().div(evaluated_left, evaluated_right)?)
         }
-        _ => unimplemented!(),
+        Expr::Function { name, args } => {
+            let args = args.iter().map(|a| evaluate(scp, env.clone(), a)).collect::<Result<Vec<_>, _>>()?;
+            let arg_types = args
+                .iter()
+                .map(|a| match a {
+                    Slot::Primitive(var) => Ok(var.var_type()),
+                    Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?.var_type()),
+                    Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?.var_type()),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty function path".into()))?;
+            if rest.is_empty() {
+                if let Some(method) = scp.get_method(last, &arg_types) {
+                    let out = method.call(env, args)?;
+                    out.ok_or_else(|| RiddleError::RuntimeError(format!("Method '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
+                } else {
+                    Err(RiddleError::NotFound(format!("Method '{}' with argument types ({}) not found", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
+                }
+            } else {
+                let var = get_var_by_path(scp.core().as_ref(), env.as_ref(), rest)?;
+                match &var {
+                    Slot::Primitive(_) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is a primitive variable, expected an object or atom for method call", rest.join(".")))),
+                    Slot::ObjectRef(obj_id) => {
+                        let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
+                        if let Some(method) = obj.class().get_method(last, &arg_types) {
+                            let out = method.call(obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?, args)?;
+                            out.ok_or_else(|| RiddleError::RuntimeError(format!("Method '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
+                        } else {
+                            Err(RiddleError::NotFound(format!("Method '{}' with argument types ({}) not found in class '{}'", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "), obj.class().full_name())))
+                        }
+                    }
+                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is an atom with id {}, expected an object for method call", rest.join("."), atom_id.0))),
+                }
+            }
+        }
+        _ => unimplemented!("Expression evaluation not implemented yet: {}", expr),
     }
 }

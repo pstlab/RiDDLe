@@ -353,7 +353,7 @@ impl Constructor {
         for parent in class.parents() {
             let parent_class = get_type_by_path(self.scope.as_ref(), parent)?.as_class().ok_or_else(|| RiddleError::NotAClass(parent.join(".")))?;
             if let Some((_, init_exprs)) = self.init.iter().find(|(init_field, _)| init_field.iter().map(|s| s.as_str()).eq(parent.iter().map(|s| s.as_str()))) {
-                let exprs = init_exprs.iter().map(|e| evaluate(self.scope.as_ref(), constructor_env.as_ref(), e)).collect::<Result<Vec<_>, _>>()?;
+                let exprs = init_exprs.iter().map(|e| evaluate(self.scope.as_ref(), constructor_env.clone(), e)).collect::<Result<Vec<_>, _>>()?;
                 let types = exprs
                     .iter()
                     .map(|e| match e {
@@ -375,7 +375,7 @@ impl Constructor {
             let fld_tp = get_type_by_path(self.scope.as_ref(), field.field_type())?;
             if obj_env.get(field.name()).is_none() {
                 if let Some(default_expr) = field.default() {
-                    let value = evaluate(self.scope.as_ref(), constructor_env.as_ref(), default_expr)?;
+                    let value = evaluate(self.scope.as_ref(), constructor_env.clone(), default_expr)?;
                     let value_type = match &value {
                         Slot::Primitive(p) => p.var_type(),
                         Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {}", obj_id.0)))?.var_type(),
