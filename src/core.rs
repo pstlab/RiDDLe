@@ -84,7 +84,7 @@ impl CommonCore {
     pub fn read(&self, riddle: &str) -> Result<(), RiddleError> {
         let mut problem = parse_problem(riddle)?;
         let statments = std::mem::take(&mut problem.statements);
-        self.scope.add_problem(problem);
+        self.scope.clone().add_problem(problem);
         let scope: Rc<dyn Scope> = self.scope.clone();
         for stmt in statments {
             execute(&scope, self.env.clone(), &stmt)?;

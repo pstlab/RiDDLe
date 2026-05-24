@@ -187,29 +187,30 @@ impl CommonScope {
     }
 
     /// Builds a scope populated from a class definition.
-    pub fn from_class(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, class_scope: Weak<dyn Scope>, class: ClassDef) -> Rc<Self> {
-        let scope = Rc::new(Self::new(core.clone(), scope));
+    pub fn from_class(parent_scope: Weak<dyn Scope>, class: ClassDef) -> Rc<Self> {
+        let scope = Rc::new(Self::new(Rc::downgrade(&parent_scope.upgrade().expect("Scope should be valid when building class scope").core()), Some(parent_scope)));
+        let weak_scope = Rc::downgrade(&scope);
         for (field_type, fields) in class.fields {
             for (name, default) in fields {
                 scope.fields.borrow_mut().insert(name.clone(), Rc::new(Field { name, field_type: field_type.clone(), default }));
             }
         }
         for method_def in class.methods {
-            scope.methods.borrow_mut().entry(method_def.name.clone()).or_default().push(Method::new(core.clone(), Some(class_scope.clone()), method_def));
+            scope.methods.borrow_mut().entry(method_def.name.clone()).or_default().push(Method::new(weak_scope.clone(), method_def));
         }
         for class_def in class.classes {
             let class_name = class_def.name.clone();
-            scope.types.borrow_mut().insert(class_name, CommonClass::new(core.clone(), Some(class_scope.clone()), class_def));
+            scope.types.borrow_mut().insert(class_name, CommonClass::new(weak_scope.clone(), class_def));
         }
         for predicate_def in class.predicates {
-            scope.predicates.borrow_mut().insert(predicate_def.name.clone(), Predicate::new(core.clone(), Some(class_scope.clone()), predicate_def));
+            scope.predicates.borrow_mut().insert(predicate_def.name.clone(), Predicate::new(weak_scope.clone(), predicate_def));
         }
         scope
     }
 
     /// Builds a local scope for constructor arguments.
-    pub fn from_constructor(core: Weak<dyn Core>, scope: Weak<dyn Class>, constructor: ConstructorDef) -> Self {
-        let scope = Self::new(core, Some(scope));
+    pub fn from_constructor(parent_scope: Weak<dyn Class>, constructor: ConstructorDef) -> Self {
+        let scope = Self::new(Rc::downgrade(&parent_scope.upgrade().expect("Class should be valid when building constructor scope").core()), Some(parent_scope));
         for (arg_type, arg_name) in constructor.args {
             scope.fields.borrow_mut().insert(arg_name.clone(), Rc::new(Field { name: arg_name, field_type: arg_type, default: None }));
         }
@@ -217,8 +218,8 @@ impl CommonScope {
     }
 
     /// Builds a local scope for method arguments.
-    pub fn from_method(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, method: MethodDef) -> Self {
-        let scope = Self::new(core, scope);
+    pub fn from_method(parent_scope: Weak<dyn Scope>, method: MethodDef) -> Self {
+        let scope = Self::new(Rc::downgrade(&parent_scope.upgrade().expect("Scope should be valid when building method scope").core()), Some(parent_scope));
         for (arg_type, arg_name) in method.args {
             scope.fields.borrow_mut().insert(arg_name.clone(), Rc::new(Field { name: arg_name, field_type: arg_type, default: None }));
         }
@@ -226,8 +227,8 @@ impl CommonScope {
     }
 
     /// Builds a local scope for predicate arguments.
-    pub fn from_predicate(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, predicate: PredicateDef) -> Self {
-        let scope = Self::new(core, scope);
+    pub fn from_predicate(parent_scope: Weak<dyn Scope>, predicate: PredicateDef) -> Self {
+        let scope = Self::new(Rc::downgrade(&parent_scope.upgrade().expect("Scope should be valid when building predicate scope").core()), Some(parent_scope));
         for (arg_type, arg_name) in predicate.args {
             scope.fields.borrow_mut().insert(arg_name.clone(), Rc::new(Field { name: arg_name, field_type: arg_type, default: None }));
         }
@@ -235,15 +236,16 @@ impl CommonScope {
     }
 
     /// Merges problem-level declarations into this scope.
-    pub fn add_problem(&self, problem: ProblemDef) {
+    pub fn add_problem(self: Rc<Self>, problem: ProblemDef) {
+        let scope = Rc::downgrade(&self);
         for method_def in problem.methods {
-            self.methods.borrow_mut().entry(method_def.name.clone()).or_default().push(Method::new(self.core.clone(), Some(self.core.clone()), method_def));
+            self.methods.borrow_mut().entry(method_def.name.clone()).or_default().push(Method::new(scope.clone(), method_def));
         }
         for class_def in problem.classes {
-            self.types.borrow_mut().insert(class_def.name.clone(), CommonClass::new(self.core.clone(), Some(self.core.clone()), class_def));
+            self.types.borrow_mut().insert(class_def.name.clone(), CommonClass::new(scope.clone(), class_def));
         }
         for predicate_def in problem.predicates {
-            self.predicates.borrow_mut().insert(predicate_def.name.clone(), Predicate::new(self.core.clone(), Some(self.core.clone()), predicate_def));
+            self.predicates.borrow_mut().insert(predicate_def.name.clone(), Predicate::new(scope.clone(), predicate_def));
         }
     }
 }
@@ -307,12 +309,12 @@ pub struct Constructor {
 
 impl Constructor {
     /// Creates a constructor from its parsed definition.
-    pub fn new(core: Weak<dyn Core>, scope: Weak<dyn Class>, mut constructor: ConstructorDef) -> Self {
+    pub fn new(scope: Weak<dyn Class>, mut constructor: ConstructorDef) -> Self {
         Self {
             args: std::mem::take(&mut constructor.args),
             statements: std::mem::take(&mut constructor.statements),
             init: std::mem::take(&mut constructor.init),
-            scope: Rc::new(CommonScope::from_constructor(core, scope, constructor)),
+            scope: Rc::new(CommonScope::from_constructor(scope, constructor)),
         }
     }
 
@@ -455,13 +457,13 @@ pub struct Method {
 
 impl Method {
     /// Creates a method from its parsed definition.
-    pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, mut method: MethodDef) -> Rc<Self> {
+    pub fn new(scope: Weak<dyn Scope>, mut method: MethodDef) -> Rc<Self> {
         Rc::new(Self {
             name: std::mem::take(&mut method.name),
             return_type: std::mem::take(&mut method.return_type),
             args: std::mem::take(&mut method.args),
             statements: std::mem::take(&mut method.statements),
-            scope: Rc::new(CommonScope::from_method(core, scope, method)),
+            scope: Rc::new(CommonScope::from_method(scope, method)),
         })
     }
 
@@ -572,15 +574,15 @@ pub struct CommonClass {
 
 impl CommonClass {
     /// Creates a class type from its parsed definition, including nested members.
-    pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, mut class: ClassDef) -> Rc<Self> {
+    pub fn new(parent_scope: Weak<dyn Scope>, mut class: ClassDef) -> Rc<Self> {
         let name = std::mem::take(&mut class.name);
         let parents = std::mem::take(&mut class.parents);
         let constructors_def = if class.constructors.is_empty() { vec![ConstructorDef { args: Vec::new(), init: Vec::new(), statements: Vec::new() }] } else { std::mem::take(&mut class.constructors) };
         Rc::new_cyclic(move |weak_self: &Weak<CommonClass>| Self {
             name,
             parents,
-            constructors: constructors_def.into_iter().map(|c| Constructor::new(core.clone(), weak_self.clone(), c)).collect(),
-            scope: CommonScope::from_class(core.clone(), scope, weak_self.clone(), class),
+            constructors: constructors_def.into_iter().map(|c| Constructor::new(weak_self.clone(), c)).collect(),
+            scope: CommonScope::from_class(parent_scope.clone(), class),
             instances: RefCell::new(Vec::new()),
         })
     }
@@ -756,13 +758,13 @@ pub struct Predicate {
 
 impl Predicate {
     /// Creates a predicate from its parsed definition.
-    pub fn new(core: Weak<dyn Core>, scope: Option<Weak<dyn Scope>>, mut predicate: PredicateDef) -> Rc<Self> {
+    pub fn new(scope: Weak<dyn Scope>, mut predicate: PredicateDef) -> Rc<Self> {
         Rc::new(Self {
             name: std::mem::take(&mut predicate.name),
             parents: std::mem::take(&mut predicate.parents),
             args: std::mem::take(&mut predicate.args),
             statements: std::mem::take(&mut predicate.statements),
-            scope: CommonScope::from_predicate(core, scope, predicate),
+            scope: CommonScope::from_predicate(scope, predicate),
             atoms: RefCell::new(Vec::new()),
         })
     }
