@@ -1,6 +1,6 @@
 use crate::{
     RiddleError,
-    language::{ClassDef, ConstructorDef, Expr, MethodDef, PredicateDef, ProblemDef, Statement},
+    language::{ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, Statement},
     lexer::{Lexer, Token},
 };
 use std::{collections::VecDeque, iter::Peekable};
@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_problem(&mut self) -> Result<ProblemDef, RiddleError> {
-        let mut methods = Vec::new();
+        let mut functions = Vec::new();
         let mut predicates = Vec::new();
         let mut classes = Vec::new();
         let mut statements = Vec::new();
@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
             match self.peek(0) {
                 Some(Token::Class) => classes.push(self.parse_class()?),
                 Some(Token::Predicate) => predicates.push(self.parse_predicate()?),
-                Some(Token::Void) => methods.push(self.parse_method()?),
+                Some(Token::Void) => functions.push(self.parse_function()?),
                 _ => {
                     // Lookahead to distinguish between method declaration and top-level statement
                     let mut lookahead = 0;
@@ -62,13 +62,13 @@ impl<'a> Parser<'a> {
                     let t0 = self.peek(lookahead).cloned();
                     let t1 = self.peek(lookahead + 1).cloned();
                     match (t0, t1) {
-                        (Some(Token::Identifier(_)), Some(Token::LParen)) => methods.push(self.parse_method()?),
+                        (Some(Token::Identifier(_)), Some(Token::LParen)) => functions.push(self.parse_function()?),
                         _ => statements.push(self.parse_statement()?),
                     }
                 }
             }
         }
-        Ok(ProblemDef { methods, predicates, classes, statements })
+        Ok(ProblemDef { functions, predicates, classes, statements })
     }
 
     pub(crate) fn parse_class(&mut self) -> Result<ClassDef, RiddleError> {
@@ -105,13 +105,13 @@ impl<'a> Parser<'a> {
         self.expect(Token::LBrace)?;
         let mut fields = Vec::new();
         let mut constructors = Vec::new();
-        let mut methods = Vec::new();
+        let mut functions = Vec::new();
         let mut predicates = Vec::new();
         let mut classes = Vec::new();
         while !matches!(self.peek(0), Some(Token::RBrace)) {
             match self.peek(0) {
                 Some(Token::Predicate) => predicates.push(self.parse_predicate()?),
-                Some(Token::Void) => methods.push(self.parse_method()?),
+                Some(Token::Void) => functions.push(self.parse_function()?),
                 Some(Token::Class) => classes.push(self.parse_class()?),
                 _ => {
                     // Lookahead to distinguish between constructor and field/method declaration
@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
                         let t0 = self.peek(lookahead).cloned();
                         let t1 = self.peek(lookahead + 1).cloned();
                         match (t0, t1) {
-                            (Some(Token::Identifier(_)), Some(Token::LParen)) => methods.push(self.parse_method()?),
+                            (Some(Token::Identifier(_)), Some(Token::LParen)) => functions.push(self.parse_function()?),
                             _ => {
                                 let field_type = match self.next() {
                                     Some(Token::Bool) => vec!["bool".to_string()],
@@ -186,7 +186,7 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(Token::RBrace)?;
-        Ok(ClassDef { name, parents, fields, constructors, methods, predicates, classes })
+        Ok(ClassDef { name, parents, fields, constructors, functions, predicates, classes })
     }
 
     pub(crate) fn parse_constructor(&mut self) -> Result<ConstructorDef, RiddleError> {
@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
         Ok(ConstructorDef { args, init, statements })
     }
 
-    pub(crate) fn parse_method(&mut self) -> Result<MethodDef, RiddleError> {
+    pub(crate) fn parse_function(&mut self) -> Result<FunctionDef, RiddleError> {
         let return_type = match self.peek(0) {
             Some(Token::Bool) | Some(Token::Int) | Some(Token::Real) | Some(Token::String) | Some(Token::Identifier(_)) => {
                 let return_type = match self.next().unwrap() {
@@ -352,7 +352,7 @@ impl<'a> Parser<'a> {
             statements.push(self.parse_statement()?);
         }
         self.expect(Token::RBrace)?;
-        Ok(MethodDef { return_type, name, args, statements })
+        Ok(FunctionDef { return_type, name, args, statements })
     }
 
     pub(crate) fn parse_predicate(&mut self) -> Result<PredicateDef, RiddleError> {
@@ -970,14 +970,14 @@ mod tests {
         assert_eq!(class.fields[0].1[0].0, "x".to_string());
         assert_eq!(class.fields[0].1[1].0, "y".to_string());
         assert_eq!(class.constructors.len(), 0);
-        assert_eq!(class.methods.len(), 1);
-        assert_eq!(class.methods[0].return_type, None);
-        assert_eq!(class.methods[0].name, "move");
-        assert_eq!(class.methods[0].args.len(), 2);
-        assert_eq!(class.methods[0].args[0].0, vec!["int".to_string()]);
-        assert_eq!(class.methods[0].args[0].1, "dx".to_string());
-        assert_eq!(class.methods[0].args[1].0, vec!["int".to_string()]);
-        assert_eq!(class.methods[0].args[1].1, "dy".to_string());
+        assert_eq!(class.functions.len(), 1);
+        assert_eq!(class.functions[0].return_type, None);
+        assert_eq!(class.functions[0].name, "move");
+        assert_eq!(class.functions[0].args.len(), 2);
+        assert_eq!(class.functions[0].args[0].0, vec!["int".to_string()]);
+        assert_eq!(class.functions[0].args[0].1, "dx".to_string());
+        assert_eq!(class.functions[0].args[1].0, vec!["int".to_string()]);
+        assert_eq!(class.functions[0].args[1].1, "dy".to_string());
         assert_eq!(class.predicates.len(), 1);
         assert_eq!(class.predicates[0].name, "isOrigin");
         assert_eq!(class.predicates[0].args.len(), 0);

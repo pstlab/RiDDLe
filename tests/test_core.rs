@@ -3,7 +3,7 @@ use riddle::{
     core::{CommonCore, Core},
     env::{Atom, AtomId, BoolExpr, Env, Object, ObjectId, Slot, Var},
     language::Disjunction,
-    scope::{Class, Field, Method, Predicate, Scope, Type, arith_class},
+    scope::{Class, Field, Function, Predicate, Scope, Type, arith_class},
 };
 use std::{
     any::Any,
@@ -146,8 +146,8 @@ impl Scope for TestCore {
         self.core.get_field(_name)
     }
 
-    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.core.get_method(name, classes)
+    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.core.get_function(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {

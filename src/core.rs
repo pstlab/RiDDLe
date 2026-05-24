@@ -3,7 +3,7 @@ use crate::{
     env::{Atom, AtomId, BoolExpr, CommonEnv, Env, Object, ObjectId, Slot},
     language::{Disjunction, execute},
     parse_problem,
-    scope::{BoolType, Class, CommonScope, Field, IntType, Method, Predicate, RealType, Scope, StringType, Type},
+    scope::{BoolType, Class, CommonScope, Field, Function, IntType, Predicate, RealType, Scope, StringType, Type},
 };
 use std::{
     cell::RefCell,
@@ -143,8 +143,8 @@ impl Scope for CommonCore {
         self.scope.get_field(name)
     }
 
-    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.scope.get_method(name, classes)
+    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -305,8 +305,8 @@ mod tests {
             self.core.get_field(_name)
         }
 
-        fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-            self.core.get_method(name, classes)
+        fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+            self.core.get_function(name, classes)
         }
 
         fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {

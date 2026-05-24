@@ -1,5 +1,5 @@
 use crate::{
-    language::{ClassDef, ConstructorDef, Expr, MethodDef, PredicateDef, ProblemDef, Statement},
+    language::{ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, Statement},
     lexer::Lexer,
     parser::Parser,
 };
@@ -50,8 +50,8 @@ pub fn parse_constructor(input: &str) -> Result<ConstructorDef, RiddleError> {
     Parser::new(Lexer::new(input)).parse_constructor()
 }
 
-pub fn parse_method(input: &str) -> Result<MethodDef, RiddleError> {
-    Parser::new(Lexer::new(input)).parse_method()
+pub fn parse_method(input: &str) -> Result<FunctionDef, RiddleError> {
+    Parser::new(Lexer::new(input)).parse_function()
 }
 
 pub fn parse_predicate(input: &str) -> Result<PredicateDef, RiddleError> {

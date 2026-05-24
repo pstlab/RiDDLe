@@ -2,7 +2,7 @@ use crate::{
     RiddleError,
     core::Core,
     env::{Atom, AtomId, BoolExpr, CommonEnv, Env, ObjectId, Slot, Var},
-    language::{ClassDef, ConstructorDef, Expr, MethodDef, PredicateDef, ProblemDef, Statement, evaluate, execute},
+    language::{ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, Statement, evaluate, execute},
 };
 use std::{
     any::Any,
@@ -159,7 +159,7 @@ pub trait Scope {
 
     fn get_fields(&self) -> Vec<Rc<Field>>;
     fn get_field(&self, name: &str) -> Option<Rc<Field>>;
-    fn get_method(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Method>>;
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>>;
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>>;
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>>;
 }
@@ -168,7 +168,7 @@ pub struct CommonScope {
     core: Weak<dyn Core>,
     scope: Option<Weak<dyn Scope>>,
     fields: RefCell<HashMap<String, Rc<Field>>>,
-    methods: RefCell<HashMap<String, Vec<Rc<Method>>>>,
+    functions: RefCell<HashMap<String, Vec<Rc<Function>>>>,
     pub(crate) types: RefCell<HashMap<String, Rc<dyn Type>>>,
     predicates: RefCell<HashMap<String, Rc<Predicate>>>,
 }
@@ -180,7 +180,7 @@ impl CommonScope {
             core,
             scope,
             fields: RefCell::new(HashMap::new()),
-            methods: RefCell::new(HashMap::new()),
+            functions: RefCell::new(HashMap::new()),
             types: RefCell::new(HashMap::new()),
             predicates: RefCell::new(HashMap::new()),
         }
@@ -195,8 +195,8 @@ impl CommonScope {
                 scope.fields.borrow_mut().insert(name.clone(), Rc::new(Field { name, field_type: field_type.clone(), default }));
             }
         }
-        for method_def in class.methods {
-            scope.methods.borrow_mut().entry(method_def.name.clone()).or_default().push(Method::new(weak_scope.clone(), method_def));
+        for function_def in class.functions {
+            scope.functions.borrow_mut().entry(function_def.name.clone()).or_default().push(Function::new(weak_scope.clone(), function_def));
         }
         for class_def in class.classes {
             let class_name = class_def.name.clone();
@@ -217,10 +217,10 @@ impl CommonScope {
         scope
     }
 
-    /// Builds a local scope for method arguments.
-    pub fn from_method(parent_scope: Weak<dyn Scope>, method: MethodDef) -> Self {
-        let scope = Self::new(Rc::downgrade(&parent_scope.upgrade().expect("Scope should be valid when building method scope").core()), Some(parent_scope));
-        for (arg_type, arg_name) in method.args {
+    /// Builds a local scope for function arguments.
+    pub fn from_function(parent_scope: Weak<dyn Scope>, function: FunctionDef) -> Self {
+        let scope = Self::new(Rc::downgrade(&parent_scope.upgrade().expect("Scope should be valid when building function scope").core()), Some(parent_scope));
+        for (arg_type, arg_name) in function.args {
             scope.fields.borrow_mut().insert(arg_name.clone(), Rc::new(Field { name: arg_name, field_type: arg_type, default: None }));
         }
         scope
@@ -238,8 +238,8 @@ impl CommonScope {
     /// Merges problem-level declarations into this scope.
     pub fn add_problem(self: Rc<Self>, problem: ProblemDef) {
         let scope = Rc::downgrade(&self);
-        for method_def in problem.methods {
-            self.methods.borrow_mut().entry(method_def.name.clone()).or_default().push(Method::new(scope.clone(), method_def));
+        for function_def in problem.functions {
+            self.functions.borrow_mut().entry(function_def.name.clone()).or_default().push(Function::new(scope.clone(), function_def));
         }
         for class_def in problem.classes {
             self.types.borrow_mut().insert(class_def.name.clone(), CommonClass::new(scope.clone(), class_def));
@@ -275,18 +275,18 @@ impl Scope for CommonScope {
         self.fields.borrow().get(name).cloned().or_else(|| self.scope()?.get_field(name))
     }
 
-    fn get_method(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.methods
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.functions
             .borrow()
             .get(name)
-            .and_then(|methods| {
-                methods
+            .and_then(|functions| {
+                functions
                     .iter()
-                    .find(|m| {
-                        if m.args().len() != types.len() {
+                    .find(|function| {
+                        if function.args().len() != types.len() {
                             return false;
                         }
-                        for (class, arg_type) in types.iter().zip(m.args().iter().map(|(t, _)| t)) {
+                        for (class, arg_type) in types.iter().zip(function.args().iter().map(|(t, _)| t)) {
                             if !get_type_by_path(self, arg_type).ok().is_some_and(|t| is_assignable_from(&t, class)) {
                                 return false;
                             }
@@ -295,7 +295,7 @@ impl Scope for CommonScope {
                     })
                     .cloned()
             })
-            .or_else(|| self.scope.as_ref()?.upgrade()?.get_method(name, types))
+            .or_else(|| self.scope.as_ref()?.upgrade()?.get_function(name, types))
     }
 }
 
@@ -426,8 +426,8 @@ impl Scope for Constructor {
         self.scope.get_field(name)
     }
 
-    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.scope.get_method(name, classes)
+    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -447,7 +447,7 @@ impl fmt::Display for Constructor {
     }
 }
 
-pub struct Method {
+pub struct Function {
     scope: Rc<CommonScope>,
     name: String,
     return_type: Option<Vec<String>>,
@@ -455,15 +455,15 @@ pub struct Method {
     statements: Vec<Statement>,
 }
 
-impl Method {
-    /// Creates a method from its parsed definition.
-    pub fn new(parent_scope: Weak<dyn Scope>, mut method: MethodDef) -> Rc<Self> {
+impl Function {
+    /// Creates a function from its parsed definition.
+    pub fn new(parent_scope: Weak<dyn Scope>, mut function: FunctionDef) -> Rc<Self> {
         Rc::new(Self {
-            name: std::mem::take(&mut method.name),
-            return_type: std::mem::take(&mut method.return_type),
-            args: std::mem::take(&mut method.args),
-            statements: std::mem::take(&mut method.statements),
-            scope: Rc::new(CommonScope::from_method(parent_scope, method)),
+            name: std::mem::take(&mut function.name),
+            return_type: std::mem::take(&mut function.return_type),
+            args: std::mem::take(&mut function.args),
+            statements: std::mem::take(&mut function.statements),
+            scope: Rc::new(CommonScope::from_function(parent_scope, function)),
         })
     }
 
@@ -524,7 +524,7 @@ impl Method {
     }
 }
 
-impl Scope for Method {
+impl Scope for Function {
     fn core(&self) -> Rc<dyn Core> {
         self.scope.core()
     }
@@ -541,8 +541,8 @@ impl Scope for Method {
         self.scope.get_field(name)
     }
 
-    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.scope.get_method(name, classes)
+    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -646,8 +646,8 @@ impl Scope for CommonClass {
         self.scope.get_field(name)
     }
 
-    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.scope.get_method(name, classes)
+    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -833,8 +833,8 @@ impl Scope for Predicate {
         self.scope.get_field(name)
     }
 
-    fn get_method(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Method>> {
-        self.scope.get_method(name, classes)
+    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, classes)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {

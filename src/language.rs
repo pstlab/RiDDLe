@@ -10,7 +10,7 @@ use std::{
 };
 
 pub struct ProblemDef {
-    pub methods: Vec<MethodDef>,
+    pub functions: Vec<FunctionDef>,
     pub predicates: Vec<PredicateDef>,
     pub classes: Vec<ClassDef>,
     pub statements: Vec<Statement>,
@@ -23,7 +23,7 @@ pub struct ClassDef {
     pub parents: Vec<Vec<String>>,
     pub fields: Vec<FieldDef>,
     pub constructors: Vec<ConstructorDef>,
-    pub methods: Vec<MethodDef>,
+    pub functions: Vec<FunctionDef>,
     pub predicates: Vec<PredicateDef>,
     pub classes: Vec<ClassDef>,
 }
@@ -34,7 +34,7 @@ pub struct ConstructorDef {
     pub statements: Vec<Statement>,
 }
 
-pub struct MethodDef {
+pub struct FunctionDef {
     pub return_type: Option<Vec<String>>,
     pub name: String,
     pub args: Vec<(Vec<String>, String)>,
@@ -337,26 +337,26 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 .collect::<Result<Vec<_>, _>>()?;
             let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty function path".into()))?;
             if rest.is_empty() {
-                if let Some(method) = scp.get_method(last, &arg_types) {
-                    let out = method.call(env, args)?;
-                    out.ok_or_else(|| RiddleError::RuntimeError(format!("Method '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
+                if let Some(function) = scp.get_function(last, &arg_types) {
+                    let out = function.call(env, args)?;
+                    out.ok_or_else(|| RiddleError::RuntimeError(format!("Function '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
                 } else {
-                    Err(RiddleError::NotFound(format!("Method '{}' with argument types ({}) not found", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
+                    Err(RiddleError::NotFound(format!("Function '{}' with argument types ({}) not found", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
                 }
             } else {
                 let var = get_var_by_path(scp.core().as_ref(), env.as_ref(), rest)?;
                 match &var {
-                    Slot::Primitive(_) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is a primitive variable, expected an object or atom for method call", rest.join(".")))),
+                    Slot::Primitive(_) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is a primitive variable, expected an object or atom for function call", rest.join(".")))),
                     Slot::ObjectRef(obj_id) => {
                         let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
-                        if let Some(method) = obj.class().get_method(last, &arg_types) {
-                            let out = method.call(obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?, args)?;
-                            out.ok_or_else(|| RiddleError::RuntimeError(format!("Method '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
+                        if let Some(function) = obj.class().get_function(last, &arg_types) {
+                            let out = function.call(obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?, args)?;
+                            out.ok_or_else(|| RiddleError::RuntimeError(format!("Function '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
                         } else {
-                            Err(RiddleError::NotFound(format!("Method '{}' with argument types ({}) not found in class '{}'", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "), obj.class().full_name())))
+                            Err(RiddleError::NotFound(format!("Function '{}' with argument types ({}) not found in class '{}'", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "), obj.class().full_name())))
                         }
                     }
-                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is an atom with id {}, expected an object for method call", rest.join("."), atom_id.0))),
+                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is an atom with id {}, expected an object for function call", rest.join("."), atom_id.0))),
                 }
             }
         }
