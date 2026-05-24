@@ -27,7 +27,7 @@ pub trait Core: Scope + Env {
     fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError>;
 
     fn assert(&self, term: Rc<BoolExpr>) -> bool;
-    fn new_var(&self, tp: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError>;
+    fn new_var(&self, tp: Rc<dyn Class>, instances: &[ObjectId]) -> Result<Slot, RiddleError>;
     fn new_disjunction(&self, disjunction: Disjunction);
 
     fn new_object(&self, class: Rc<dyn Class>) -> ObjectId;
@@ -266,7 +266,7 @@ mod tests {
             true
         }
 
-        fn new_var(&self, tp: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError> {
+        fn new_var(&self, tp: Rc<dyn Class>, instances: &[ObjectId]) -> Result<Slot, RiddleError> {
             if instances.is_empty() {
                 return Err(RiddleError::InconsistencyError("Cannot create variable with no instances".into()));
             }
