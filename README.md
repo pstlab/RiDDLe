@@ -25,7 +25,7 @@ More language-level details are available in the [wiki](https://github.com/ratio
 The project currently exposes RiDDLe as a Rust library crate (published as `riddle-lang` on crates.io, imported as module `riddle`).
 
 - Parsing entry points are stable and covered by tests.
-- The runtime includes class/predicate registration, method/constructor execution, and formula instantiation.
+- The runtime includes class/predicate registration, function/constructor execution, and formula instantiation.
 - A command line interface is not included in this repository.
 
 ## Installation
@@ -48,7 +48,7 @@ Main parsing functions exported by the crate:
 - `parse_problem`
 - `parse_class`
 - `parse_constructor`
-- `parse_method`
+- `parse_function`
 - `parse_predicate`
 - `parse_statement`
 - `parse_expression`
@@ -87,7 +87,7 @@ The parser/runtime supports:
 - classes with:
 	- fields (with optional initializers)
 	- constructors
-	- methods (including typed return values)
+	- functions (including typed return values)
 	- predicates
 	- nested classes
 	- inheritance syntax (`class A : B, C`)
@@ -95,7 +95,7 @@ The parser/runtime supports:
 	- arithmetic (`+`, `-`, `*`, `/`)
 	- logical (`!`, `&`, `|`)
 	- relational/equality (`<`, `<=`, `>`, `>=`, `==`, `!=`)
-	- function/method calls
+	- function calls
 	- qualified identifiers (`a.b.c`)
 	- object construction (`new Type(...)`)
 - statements:
@@ -118,7 +118,7 @@ Core source files:
 - `src/parser.rs`: recursive-descent parser and AST construction.
 - `src/language.rs`: AST definitions and execution/evaluation logic.
 - `src/env.rs`: runtime environment, variables, boolean expression normalization.
-- `src/scope.rs`: types, classes, predicates, methods, constructors, scope resolution.
+- `src/scope.rs`: types, classes, predicates, functions, constructors, scope resolution.
 - `src/core.rs`: runtime core abstraction and default core wiring.
 
 Examples and tests:

@@ -290,7 +290,7 @@ mod tests {
 
     impl Scope for TestCore {
         fn core(&self) -> Rc<dyn Core> {
-            panic!("Core should not call scope core method")
+            panic!("Core should not call scope core function")
         }
 
         fn scope(&self) -> Option<Rc<dyn Scope>> {

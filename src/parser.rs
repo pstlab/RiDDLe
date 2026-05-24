@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
                 Some(Token::Predicate) => predicates.push(self.parse_predicate()?),
                 Some(Token::Void) => functions.push(self.parse_function()?),
                 _ => {
-                    // Lookahead to distinguish between method declaration and top-level statement
+                    // Lookahead to distinguish between function declaration and top-level statement
                     let mut lookahead = 0;
                     while let Some(Token::Identifier(_)) = self.peek(lookahead) {
                         lookahead += 1;
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
                 Some(Token::Void) => functions.push(self.parse_function()?),
                 Some(Token::Class) => classes.push(self.parse_class()?),
                 _ => {
-                    // Lookahead to distinguish between constructor and field/method declaration
+                    // Lookahead to distinguish between constructor and field/function declaration
                     let mut lookahead = 0;
                     while let Some(Token::Bool | Token::Int | Token::Real | Token::String | Token::Identifier(_)) = self.peek(lookahead) {
                         lookahead += 1;
@@ -309,7 +309,7 @@ impl<'a> Parser<'a> {
         };
         let name = match self.next() {
             Some(Token::Identifier(name)) => name,
-            _ => return Err(RiddleError::RuntimeError("Expected method name".to_string())),
+            _ => return Err(RiddleError::RuntimeError("Expected function name".to_string())),
         };
         self.expect(Token::LParen)?;
         let mut args = Vec::new();
@@ -336,7 +336,7 @@ impl<'a> Parser<'a> {
             }?;
             let arg_name = match self.next() {
                 Some(Token::Identifier(name)) => name,
-                _ => return Err(RiddleError::RuntimeError("Expected identifier in method arguments".to_string())),
+                _ => return Err(RiddleError::RuntimeError("Expected identifier in function arguments".to_string())),
             };
             args.push((arg_type, arg_name));
             if let Some(Token::Comma) = self.peek(0) {
@@ -860,7 +860,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse_class, parse_constructor, parse_expression, parse_method, parse_problem, parse_statement};
+    use crate::{parse_class, parse_constructor, parse_expression, parse_function, parse_problem, parse_statement};
 
     use super::*;
 
@@ -1036,58 +1036,58 @@ mod tests {
     }
 
     #[test]
-    fn test_method() {
+    fn test_function_no_return() {
         let input = r#"
             void move(int dx, int dy) {
                 x = x + dx;
                 y = y + dy;
             }
         "#;
-        let method = parse_method(input).expect("Failed to parse method");
-        assert_eq!(method.return_type, None);
-        assert_eq!(method.name, "move");
-        assert_eq!(method.args, vec![(vec!["int".to_string()], "dx".to_string()), (vec!["int".to_string()], "dy".to_string())]);
-        assert_eq!(method.statements.len(), 2);
-        if let Statement::Assign { name, value } = &method.statements[0] {
+        let function = parse_function(input).expect("Failed to parse function");
+        assert_eq!(function.return_type, None);
+        assert_eq!(function.name, "move");
+        assert_eq!(function.args, vec![(vec!["int".to_string()], "dx".to_string()), (vec!["int".to_string()], "dy".to_string())]);
+        assert_eq!(function.statements.len(), 2);
+        if let Statement::Assign { name, value } = &function.statements[0] {
             assert_eq!(name, &vec!["x".to_string()]);
             assert_eq!(
-                *value,
-                Expr::Sum {
+                value,
+                &Expr::Sum {
                     terms: vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["dx".to_string()] }]
                 }
             );
         } else {
-            panic!("Expected assignment statement in method body");
+            panic!("Expected assignment statement in function body");
         }
-        if let Statement::Assign { name, value } = &method.statements[1] {
+        if let Statement::Assign { name, value } = &function.statements[1] {
             assert_eq!(name, &vec!["y".to_string()]);
             assert_eq!(
-                *value,
-                Expr::Sum {
+                value,
+                &Expr::Sum {
                     terms: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::QualifiedId { ids: vec!["dy".to_string()] }]
                 }
             );
         } else {
-            panic!("Expected assignment statement in method body");
+            panic!("Expected assignment statement in function body");
         }
     }
 
     #[test]
-    fn test_function() {
+    fn test_function_with_return() {
         let input = r#"
                 int add(int a, int b) {
                     return a + b;
                 }
             "#;
-        let method = parse_method(input).expect("Failed to parse function");
-        assert_eq!(method.return_type, Some(vec!["int".to_string()]));
-        assert_eq!(method.name, "add");
-        assert_eq!(method.args, vec![(vec!["int".to_string()], "a".to_string()), (vec!["int".to_string()], "b".to_string())]);
-        assert_eq!(method.statements.len(), 1);
-        if let Statement::Return { value } = &method.statements[0] {
+        let function = parse_function(input).expect("Failed to parse function");
+        assert_eq!(function.return_type, Some(vec!["int".to_string()]));
+        assert_eq!(function.name, "add");
+        assert_eq!(function.args, vec![(vec!["int".to_string()], "a".to_string()), (vec!["int".to_string()], "b".to_string())]);
+        assert_eq!(function.statements.len(), 1);
+        if let Statement::Return { value } = &function.statements[0] {
             assert_eq!(
-                *value,
-                Expr::Sum {
+                value,
+                &Expr::Sum {
                     terms: vec![Expr::QualifiedId { ids: vec!["a".to_string()] }, Expr::QualifiedId { ids: vec!["b".to_string()] }]
                 }
             );

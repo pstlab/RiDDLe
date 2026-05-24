@@ -50,7 +50,7 @@ pub fn parse_constructor(input: &str) -> Result<ConstructorDef, RiddleError> {
     Parser::new(Lexer::new(input)).parse_constructor()
 }
 
-pub fn parse_method(input: &str) -> Result<FunctionDef, RiddleError> {
+pub fn parse_function(input: &str) -> Result<FunctionDef, RiddleError> {
     Parser::new(Lexer::new(input)).parse_function()
 }
 

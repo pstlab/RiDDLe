@@ -483,15 +483,15 @@ impl Function {
         &self.statements
     }
 
-    /// Invokes the method in a fresh local environment.
+    /// Invokes the function in a fresh local environment.
     ///
     /// The call validates argument count and type compatibility, executes all
-    /// method statements, and checks the declared return type (if any).
+    /// function statements, and checks the declared return type (if any).
     pub fn call(&self, env: Rc<dyn Env>, args: Vec<Slot>) -> Result<Option<Slot>, RiddleError> {
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
-        let method_env = Rc::new(CommonEnv::new(Some(env)));
+        let function_env = Rc::new(CommonEnv::new(Some(env)));
         for ((arg_type, arg_name), arg_value) in self.args.iter().zip(args) {
             let expected_type = get_type_by_path(self.scope.as_ref(), arg_type)?;
             let arg_value_type = match &arg_value {
@@ -502,14 +502,14 @@ impl Function {
             if !is_assignable_from(&expected_type, &arg_value_type) {
                 return Err(RiddleError::TypeError(format!("Argument '{}' expected to be of type '{}', got '{}'", arg_name, expected_type.full_name(), arg_value_type.full_name())));
             }
-            method_env.set(arg_name.clone(), arg_value);
+            function_env.set(arg_name.clone(), arg_value);
         }
         let scope: Rc<dyn Scope> = self.scope.clone();
         for stmt in &self.statements {
-            execute(&scope, method_env.clone(), stmt)?;
+            execute(&scope, function_env.clone(), stmt)?;
         }
         if let Some(return_type) = &self.return_type {
-            method_env.get("__return").ok_or_else(|| RiddleError::RuntimeError("Method did not set return value".into())).and_then(|ret| {
+            function_env.get("__return").ok_or_else(|| RiddleError::RuntimeError("Function did not set return value".into())).and_then(|ret| {
                 let expected_type = get_type_by_path(self.scope.as_ref(), return_type)?;
                 let ret_type = match &ret {
                     Slot::Primitive(p) => p.var_type(),
