@@ -309,12 +309,12 @@ pub struct Constructor {
 
 impl Constructor {
     /// Creates a constructor from its parsed definition.
-    pub fn new(scope: Weak<dyn Class>, mut constructor: ConstructorDef) -> Self {
+    pub fn new(parent_scope: Weak<dyn Class>, mut constructor: ConstructorDef) -> Self {
         Self {
             args: std::mem::take(&mut constructor.args),
             statements: std::mem::take(&mut constructor.statements),
             init: std::mem::take(&mut constructor.init),
-            scope: Rc::new(CommonScope::from_constructor(scope, constructor)),
+            scope: Rc::new(CommonScope::from_constructor(parent_scope, constructor)),
         }
     }
 
@@ -457,13 +457,13 @@ pub struct Method {
 
 impl Method {
     /// Creates a method from its parsed definition.
-    pub fn new(scope: Weak<dyn Scope>, mut method: MethodDef) -> Rc<Self> {
+    pub fn new(parent_scope: Weak<dyn Scope>, mut method: MethodDef) -> Rc<Self> {
         Rc::new(Self {
             name: std::mem::take(&mut method.name),
             return_type: std::mem::take(&mut method.return_type),
             args: std::mem::take(&mut method.args),
             statements: std::mem::take(&mut method.statements),
-            scope: Rc::new(CommonScope::from_method(scope, method)),
+            scope: Rc::new(CommonScope::from_method(parent_scope, method)),
         })
     }
 
@@ -557,8 +557,8 @@ impl Scope for Method {
 /// Class-specific API surface layered on top of type and scope behavior.
 pub trait Class: Type + Scope {
     fn parents(&self) -> &[Vec<String>];
-    fn constructors(&self) -> &[Constructor];
-    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<&Constructor>;
+    fn constructors(&self) -> Vec<Rc<Constructor>>;
+    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>>;
     fn predicates(&self) -> Vec<Rc<Predicate>>;
     fn classes(&self) -> Vec<Rc<dyn Class>>;
     fn instances(&self) -> Vec<ObjectId>;
@@ -568,7 +568,7 @@ pub struct CommonClass {
     scope: Rc<CommonScope>,
     name: String,
     parents: Vec<Vec<String>>,
-    constructors: Vec<Constructor>,
+    constructors: RefCell<Vec<Rc<Constructor>>>,
     instances: RefCell<Vec<ObjectId>>,
 }
 
@@ -578,13 +578,16 @@ impl CommonClass {
         let name = std::mem::take(&mut class.name);
         let parents = std::mem::take(&mut class.parents);
         let constructors_def = if class.constructors.is_empty() { vec![ConstructorDef { args: Vec::new(), init: Vec::new(), statements: Vec::new() }] } else { std::mem::take(&mut class.constructors) };
-        Rc::new_cyclic(move |weak_self: &Weak<CommonClass>| Self {
+        let class = Rc::new(Self {
             name,
             parents,
-            constructors: constructors_def.into_iter().map(|c| Constructor::new(weak_self.clone(), c)).collect(),
-            scope: CommonScope::from_class(parent_scope.clone(), class),
+            constructors: RefCell::new(Vec::new()),
+            scope: CommonScope::from_class(parent_scope, class),
             instances: RefCell::new(Vec::new()),
-        })
+        });
+        let weak_class = Rc::downgrade(&class);
+        class.constructors.borrow_mut().extend(constructors_def.into_iter().map(|c| Rc::new(Constructor::new(weak_class.clone(), c))));
+        class
     }
 }
 
@@ -661,22 +664,26 @@ impl Class for CommonClass {
         &self.parents
     }
 
-    fn constructors(&self) -> &[Constructor] {
-        &self.constructors
+    fn constructors(&self) -> Vec<Rc<Constructor>> {
+        self.constructors.borrow().clone()
     }
 
-    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<&Constructor> {
-        self.constructors.iter().find(|c| {
-            if c.args().len() != args.len() {
-                return false;
-            }
-            for ((arg_type, _), class) in c.args().iter().zip(args.iter()) {
-                if !class.full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
+    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>> {
+        self.constructors
+            .borrow()
+            .iter()
+            .find(|c| {
+                if c.args().len() != args.len() {
                     return false;
                 }
-            }
-            true
-        })
+                for ((arg_type, _), class) in c.args().iter().zip(args.iter()) {
+                    if !class.full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
+                        return false;
+                    }
+                }
+                true
+            })
+            .cloned()
     }
 
     fn predicates(&self) -> Vec<Rc<Predicate>> {
