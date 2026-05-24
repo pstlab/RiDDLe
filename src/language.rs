@@ -461,7 +461,11 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let constructor = class.constructor(&arg_types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with argument types ({}) not found", class.full_name(), arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))?;
-            let object = scp.core().new_object(class.clone());
+            let object = class.new_instance();
+            let object = match object {
+                Slot::ObjectRef(obj_id) => Ok(obj_id),
+                _ => Err(RiddleError::RuntimeError("Constructor did not return an object reference".to_string())),
+            }?;
             constructor.call(object, args)?;
             Ok(Slot::ObjectRef(object))
         }
