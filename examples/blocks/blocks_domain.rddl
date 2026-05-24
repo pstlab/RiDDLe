@@ -8,7 +8,7 @@ class Clear : StateVariable {
         goal us_b = new hand.UnStack(b1:tau.b, end:start);
     }
 
-    predicate False() {
+    predicate False() : Interval {
         goal us_b = new hand.Stack(b1:tau.b, end:start);
     }
 }

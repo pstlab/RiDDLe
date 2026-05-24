@@ -3,7 +3,7 @@ use riddle::{
     core::{CommonCore, Core},
     env::{Atom, AtomId, BoolExpr, Env, Object, ObjectId, Slot, Var},
     language::Disjunction,
-    scope::{Class, Field, Function, Predicate, Scope, Type, arith_class},
+    scope::{Class, Field, Function, Predicate, Scope, Type, arith_type},
 };
 use std::{
     any::Any,
@@ -83,7 +83,7 @@ impl Core for TestCore {
     }
 
     fn sum(&self, sum: &[Slot]) -> Result<Slot, RiddleError> {
-        let tp = arith_class(self, sum)?;
+        let tp = arith_type(self, sum)?;
         Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
     }
     fn opposite(&self, term: Slot) -> Result<Slot, RiddleError> {
@@ -95,11 +95,11 @@ impl Core for TestCore {
         Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
     }
     fn mul(&self, mul: &[Slot]) -> Result<Slot, RiddleError> {
-        let tp = arith_class(self, mul)?;
+        let tp = arith_type(self, mul)?;
         Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
     }
     fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError> {
-        let tp = arith_class(self, &[left, right])?;
+        let tp = arith_type(self, &[left, right])?;
         Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
     }
 
@@ -111,7 +111,13 @@ impl Core for TestCore {
         if instances.is_empty() {
             return Err(RiddleError::InconsistencyError("Cannot create variable with no instances".into()));
         }
-        Ok(Slot::Primitive(Rc::new(TestObject::new(class))))
+        match class.full_name().as_str() {
+            "bool" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.bool_type())))),
+            "int" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.int_type())))),
+            "real" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.real_type())))),
+            "string" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.string_type())))),
+            _ => Ok(Slot::ObjectRef(self.new_object(class.as_class().expect("Type should be a class")))),
+        }
     }
     fn new_disjunction(&self, _disjunction: Disjunction) {}
 
@@ -146,8 +152,8 @@ impl Scope for TestCore {
         self.core.get_field(_name)
     }
 
-    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.core.get_function(name, classes)
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.core.get_function(name, types)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {

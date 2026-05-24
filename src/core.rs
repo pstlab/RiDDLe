@@ -27,7 +27,7 @@ pub trait Core: Scope + Env {
     fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError>;
 
     fn assert(&self, term: Rc<BoolExpr>) -> bool;
-    fn new_var(&self, class: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError>;
+    fn new_var(&self, tp: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError>;
     fn new_disjunction(&self, disjunction: Disjunction);
 
     fn new_object(&self, class: Rc<dyn Class>) -> ObjectId;
@@ -93,8 +93,8 @@ impl CommonCore {
     }
 
     /// Registers a type in the core type table under its declared name.
-    pub fn add_type(&self, class: Rc<dyn Type>) {
-        self.scope.types.borrow_mut().insert(class.name().to_string(), class);
+    pub fn add_type(&self, tp: Rc<dyn Type>) {
+        self.scope.types.borrow_mut().insert(tp.name().to_string(), tp);
     }
 
     pub fn get_objects(&self) -> Vec<Rc<Object>> {
@@ -143,8 +143,8 @@ impl Scope for CommonCore {
         self.scope.get_field(name)
     }
 
-    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, classes)
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, types)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -173,7 +173,7 @@ impl Env for CommonCore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{env::Var, scope::arith_class};
+    use crate::{env::Var, scope::arith_type};
     use std::any::Any;
 
     struct TestObject {
@@ -188,7 +188,7 @@ mod tests {
 
     impl Var for TestObject {
         fn var_type(&self) -> Rc<dyn Type> {
-            self.tp.upgrade().expect("Class should still exist")
+            self.tp.upgrade().expect("Type should still exist")
         }
 
         fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
@@ -242,7 +242,7 @@ mod tests {
         }
 
         fn sum(&self, sum: &[Slot]) -> Result<Slot, RiddleError> {
-            let tp = arith_class(self, sum)?;
+            let tp = arith_type(self, sum)?;
             Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn opposite(&self, term: Slot) -> Result<Slot, RiddleError> {
@@ -254,11 +254,11 @@ mod tests {
             Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn mul(&self, mul: &[Slot]) -> Result<Slot, RiddleError> {
-            let tp = arith_class(self, mul)?;
+            let tp = arith_type(self, mul)?;
             Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn div(&self, left: Slot, right: Slot) -> Result<Slot, RiddleError> {
-            let tp = arith_class(self, &[left, right])?;
+            let tp = arith_type(self, &[left, right])?;
             Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
 
@@ -266,11 +266,11 @@ mod tests {
             true
         }
 
-        fn new_var(&self, class: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError> {
+        fn new_var(&self, tp: Rc<dyn Type>, instances: &[ObjectId]) -> Result<Slot, RiddleError> {
             if instances.is_empty() {
                 return Err(RiddleError::InconsistencyError("Cannot create variable with no instances".into()));
             }
-            Ok(Slot::Primitive(Rc::new(TestObject::new(class))))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
         }
         fn new_disjunction(&self, _disjunction: Disjunction) {}
 
@@ -305,8 +305,8 @@ mod tests {
             self.core.get_field(_name)
         }
 
-        fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-            self.core.get_function(name, classes)
+        fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+            self.core.get_function(name, types)
         }
 
         fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {

@@ -426,8 +426,8 @@ impl Scope for Constructor {
         self.scope.get_field(name)
     }
 
-    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, classes)
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, types)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -541,8 +541,8 @@ impl Scope for Function {
         self.scope.get_field(name)
     }
 
-    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, classes)
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, types)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -646,8 +646,8 @@ impl Scope for CommonClass {
         self.scope.get_field(name)
     }
 
-    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, classes)
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, types)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
@@ -676,8 +676,8 @@ impl Class for CommonClass {
                 if c.args().len() != args.len() {
                     return false;
                 }
-                for ((arg_type, _), class) in c.args().iter().zip(args.iter()) {
-                    if !class.full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
+                for ((arg_type, _), tp) in c.args().iter().zip(args.iter()) {
+                    if !tp.full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
                         return false;
                     }
                 }
@@ -711,7 +711,7 @@ impl Class for CommonClass {
 ///
 /// If all terms are int the result is int, otherwise mixed int/real terms yield
 /// real. Any other type combination results in a type error.
-pub fn arith_class(cr: &dyn Core, terms: &[Slot]) -> Result<Rc<dyn Type>, RiddleError> {
+pub fn arith_type(cr: &dyn Core, terms: &[Slot]) -> Result<Rc<dyn Type>, RiddleError> {
     let types = terms
         .iter()
         .map(|t| match t {
@@ -833,8 +833,8 @@ impl Scope for Predicate {
         self.scope.get_field(name)
     }
 
-    fn get_function(&self, name: &str, classes: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, classes)
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.scope.get_function(name, types)
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
