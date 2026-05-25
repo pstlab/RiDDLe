@@ -266,11 +266,11 @@ mod tests {
             true
         }
 
-        fn new_var(&self, tp: Rc<dyn Class>, instances: &[ObjectId]) -> Result<Slot, RiddleError> {
+        fn new_var(&self, class: Rc<dyn Class>, instances: &[ObjectId]) -> Result<Slot, RiddleError> {
             if instances.is_empty() {
                 return Err(RiddleError::InconsistencyError("Cannot create variable with no instances".into()));
             }
-            Ok(Slot::Primitive(Rc::new(TestObject::new(tp))))
+            Ok(Slot::Primitive(Rc::new(TestObject::new(class))))
         }
         fn new_disjunction(&self, _disjunction: Disjunction) {}
 

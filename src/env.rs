@@ -154,7 +154,7 @@ impl Atom {
     pub fn new(id: AtomId, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Self {
         let env = match args.get("tau") {
             Some(tau) => match tau {
-                Slot::Primitive(_var) => panic!("Tau cannot be a primitive variable"),
+                Slot::Primitive(var) => var.clone().as_env().expect("Tau variable does not have an environment").clone(),
                 Slot::ObjectRef(obj_id) => predicate.clone().core().get_object(*obj_id).expect("Object ID in tau does not exist").as_env().expect("Object in tau does not have an environment").clone(),
                 Slot::AtomRef(atom_id) => predicate.clone().core().get_atom(*atom_id).expect("Atom ID in tau does not exist").as_env().expect("Atom in tau does not have an environment").clone(),
             },
@@ -272,7 +272,7 @@ pub(crate) fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
 pub fn get_var_by_path(core: &dyn Core, env: &dyn Env, path: &[String]) -> Result<Slot, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
     rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| match acc {
-        Slot::Primitive(_var) => Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in path is a primitive variable, cannot access '{}'", first, id))),
+        Slot::Primitive(var) => var.clone().as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id, first))),
         Slot::ObjectRef(obj_id) => {
             let obj = core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
             obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object with id {}", id, obj_id.0)))

@@ -1,5 +1,6 @@
 /*
 * This example aims to demonstrate the use of enum variables and how their parameters can be constrained.
+* In this example, we have two cities, each with two locations. We want to create a variable that can only take values from the second city.
 */
 
 class City {}

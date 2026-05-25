@@ -3,7 +3,7 @@ use riddle::{
     core::{CommonCore, Core},
     env::{Atom, AtomId, BoolExpr, Env, Object, ObjectId, Slot, Var},
     language::Disjunction,
-    scope::{Class, Field, Function, Predicate, Scope, Type, arith_type},
+    scope::{Class, Field, Function, Predicate, Scope, Type, arith_type, get_type_by_path},
 };
 use std::{
     any::Any,
@@ -46,13 +46,37 @@ impl TestEnum {
     }
 }
 
+impl Var for TestEnum {
+    fn var_type(&self) -> Rc<dyn Type> {
+        self.var_type.upgrade().expect("Type has been dropped").clone()
+    }
+
+    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
+    }
+
+    fn as_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
+        Some(self.clone())
+    }
+}
+
 impl Env for TestEnum {
     fn parent(&self) -> Option<Rc<dyn Env>> {
         None
     }
 
     fn get(&self, name: &str) -> Option<Slot> {
-        self.variables.borrow().get(name).cloned()
+        if let Some(var) = self.variables.borrow().get(name) {
+            return Some(var.clone());
+        } else {
+            if let Some(class) = self.var_type.upgrade().expect("Type has been dropped").as_class() {
+                if let Some(field) = class.get_field(name) {
+                    let field_type = get_type_by_path(class.as_ref(), field.field_type()).expect("Field type should exist");
+                    return Some(field_type.new_instance());
+                }
+            }
+        }
+        None
     }
 
     fn set(&self, name: String, value: Slot) {
@@ -136,16 +160,7 @@ impl Core for TestCore {
         if instances.is_empty() {
             return Err(RiddleError::InconsistencyError("Cannot create variable with no instances".into()));
         }
-        match class.full_name().as_str() {
-            "bool" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.bool_type())))),
-            "int" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.int_type())))),
-            "real" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.real_type())))),
-            "string" => Ok(Slot::Primitive(Rc::new(TestObject::new(self.string_type())))),
-            _ => {
-                let obj = self.new_object(class);
-                Ok(Slot::ObjectRef(obj))
-            }
-        }
+        Ok(Slot::Primitive(Rc::new(TestEnum::new(class))))
     }
     fn new_disjunction(&self, _disjunction: Disjunction) {}
 
@@ -239,7 +254,7 @@ test_riddle!(test_core_07, "examples/core/example_07.rddl");
 test_riddle!(test_core_08, "examples/core/example_08.rddl");
 test_riddle!(test_core_09, "examples/core/example_09.rddl");
 test_riddle!(test_core_10, "examples/core/example_10.rddl");
-// test_riddle!(test_core_11, "examples/core/example_11.rddl");
+test_riddle!(test_core_11, "examples/core/example_11.rddl");
 test_riddle!(test_core_12, "examples/core/example_12.rddl");
 test_riddle!(test_core_13, "examples/core/example_13.rddl");
 
