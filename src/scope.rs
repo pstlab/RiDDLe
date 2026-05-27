@@ -331,7 +331,7 @@ impl Constructor {
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
-        let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {} not found", object.0)))?.as_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
+        let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *object)))?.as_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
         // the context in which the constructor is invoked..
         let constructor_env = Rc::new(CommonEnv::new(Some(obj_env.clone())));
         constructor_env.set("this".to_string(), Slot::ObjectRef(object));
@@ -339,8 +339,8 @@ impl Constructor {
             let expected_type = get_type_by_path(self.scope.as_ref(), arg_type)?;
             let arg_value_type = match &arg_value {
                 Slot::Primitive(p) => p.var_type(),
-                Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {}", obj_id.0)))?.var_type(),
-                Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with ID {}", atom_id.0)))?.var_type(),
+                Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type(),
+                Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type(),
             };
             if !is_assignable_from(&expected_type, &arg_value_type) {
                 return Err(RiddleError::TypeError(format!("Argument '{}' expected to be of type '{}', got '{}'", arg_name, expected_type.full_name(), arg_value_type.full_name())));
@@ -358,8 +358,8 @@ impl Constructor {
                     .iter()
                     .map(|e| match e {
                         Slot::Primitive(p) => Ok(p.var_type()),
-                        Slot::ObjectRef(obj_id) => Ok(self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {}", obj_id.0)))?.var_type()),
-                        Slot::AtomRef(atom_id) => Ok(self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with ID {}", atom_id.0)))?.var_type()),
+                        Slot::ObjectRef(obj_id) => Ok(self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type()),
+                        Slot::AtomRef(atom_id) => Ok(self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type()),
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 let constructor = parent_class.constructor(&types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for parent class '{}' with specified argument types", parent_class.full_name())))?;
@@ -378,8 +378,8 @@ impl Constructor {
                     let value = evaluate(self.scope.as_ref(), constructor_env.clone(), default_expr)?;
                     let value_type = match &value {
                         Slot::Primitive(p) => p.var_type(),
-                        Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {}", obj_id.0)))?.var_type(),
-                        Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with ID {}", atom_id.0)))?.var_type(),
+                        Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type(),
+                        Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type(),
                     };
                     if !is_assignable_from(&fld_tp, &value_type) {
                         return Err(RiddleError::TypeError(format!("Field '{}' expected to be of type '{}', got '{}'", field.name(), fld_tp.full_name(), value_type.full_name())));
@@ -496,8 +496,8 @@ impl Function {
             let expected_type = get_type_by_path(self.scope.as_ref(), arg_type)?;
             let arg_value_type = match &arg_value {
                 Slot::Primitive(p) => p.var_type(),
-                Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {}", obj_id.0)))?.var_type(),
-                Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with ID {}", atom_id.0)))?.var_type(),
+                Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type(),
+                Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type(),
             };
             if !is_assignable_from(&expected_type, &arg_value_type) {
                 return Err(RiddleError::TypeError(format!("Argument '{}' expected to be of type '{}', got '{}'", arg_name, expected_type.full_name(), arg_value_type.full_name())));
@@ -513,8 +513,8 @@ impl Function {
                 let expected_type = get_type_by_path(self.scope.as_ref(), return_type)?;
                 let ret_type = match &ret {
                     Slot::Primitive(p) => p.var_type(),
-                    Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with ID {}", obj_id.0)))?.var_type(),
-                    Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with ID {}", atom_id.0)))?.var_type(),
+                    Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type(),
+                    Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type(),
                 };
                 if !is_assignable_from(&expected_type, &ret_type) { Err(RiddleError::TypeError(format!("Return value expected to be of type '{}', got '{}'", expected_type.full_name(), ret_type.full_name()))) } else { Ok(Some(ret)) }
             })
@@ -716,8 +716,8 @@ pub fn arith_type(cr: &dyn Core, terms: &[Slot]) -> Result<Rc<dyn Type>, RiddleE
         .iter()
         .map(|t| match t {
             Slot::Primitive(p) => Ok(p.var_type()),
-            Slot::ObjectRef(obj_id) => Err(RiddleError::TypeError(format!("Expected numeric type, got object reference to object with ID {}", obj_id.0))),
-            Slot::AtomRef(atom_id) => Err(RiddleError::TypeError(format!("Expected numeric type, got atom reference to atom with ID {}", atom_id.0))),
+            Slot::ObjectRef(obj_id) => Err(RiddleError::TypeError(format!("Expected numeric type, got object reference to object {}", *obj_id))),
+            Slot::AtomRef(atom_id) => Err(RiddleError::TypeError(format!("Expected numeric type, got atom reference to atom {}", *atom_id))),
         })
         .collect::<Result<Vec<_>, _>>()?;
     if types.iter().all(|t| t.name() == "int") {

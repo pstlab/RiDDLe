@@ -23,6 +23,12 @@ impl Deref for ObjectId {
     }
 }
 
+impl fmt::Display for ObjectId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "obj-{}", self.0)
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AtomId(pub(super) usize);
 
@@ -31,6 +37,12 @@ impl Deref for AtomId {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl fmt::Display for AtomId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "atm-{}", self.0)
     }
 }
 
@@ -45,8 +57,8 @@ impl fmt::Display for Slot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Slot::Primitive(var) => write!(f, "{}", var.var_type().name()),
-            Slot::ObjectRef(obj_id) => write!(f, "Object({})", obj_id.0),
-            Slot::AtomRef(atom_id) => write!(f, "Atom({})", atom_id.0),
+            Slot::ObjectRef(obj_id) => write!(f, "Object({})", *obj_id),
+            Slot::AtomRef(atom_id) => write!(f, "Atom({})", *atom_id),
         }
     }
 }
@@ -291,12 +303,12 @@ pub fn get_var_by_path(core: &dyn Core, env: &dyn Env, path: &[String]) -> Resul
     rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| match acc {
         Slot::Primitive(var) => var.clone().as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id, first))),
         Slot::ObjectRef(obj_id) => {
-            let obj = core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
-            obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object with id {}", id, obj_id.0)))
+            let obj = core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
+            obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id, *obj_id)))
         }
         Slot::AtomRef(atom_id) => {
-            let atom = core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?;
-            atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom with id {} does not have an environment", atom_id.0)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom with id {}", id, atom_id.0)))
+            let atom = core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?;
+            atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id, *atom_id)))
         }
     })
 }

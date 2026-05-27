@@ -155,14 +155,14 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                             }
                         }
                         Slot::ObjectRef(obj_id) => {
-                            let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
+                            let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
                             let obj_type: Rc<dyn Type> = obj.class();
                             if !is_assignable_from(&fld_tp, &obj_type) {
                                 return Err(RiddleError::TypeError(format!("Default value for field '{}' is not assignable to field type '{}'", name, field_type.join("."))));
                             }
                         }
                         Slot::AtomRef(atom_id) => {
-                            let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?;
+                            let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?;
                             let atom_type: Rc<dyn Type> = atom.predicate();
                             if !is_assignable_from(&fld_tp, &atom_type) {
                                 return Err(RiddleError::TypeError(format!("Default value for field '{}' is not assignable to field type '{}'", name, field_type.join("."))));
@@ -196,13 +196,13 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 match &var {
                     Slot::Primitive(_) => Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in assignment path is a primitive variable, cannot assign to '{}'", rest.join("."), last))),
                     Slot::ObjectRef(obj_id) => {
-                        let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
-                        obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?.set(last.to_string(), value);
+                        let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
+                        obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.set(last.to_string(), value);
                         Ok(())
                     }
                     Slot::AtomRef(atom_id) => {
-                        let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?;
-                        atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom with id {} does not have an environment", atom_id.0)))?.set(last.to_string(), value);
+                        let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?;
+                        atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.set(last.to_string(), value);
                         Ok(())
                     }
                 }
@@ -229,8 +229,8 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             let predicate = if let Some(tau) = tau.as_ref() {
                 let tau = match tau {
                     Slot::Primitive(var) => Err(RiddleError::NotAClass(format!("Tau variable is a primitive variable of type '{}', expected a class", var.var_type().full_name()))),
-                    Slot::ObjectRef(obj_id) => scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0))),
-                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Tau variable is an atom with id {}, expected a class", atom_id.0))),
+                    Slot::ObjectRef(obj_id) => scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id))),
+                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Tau variable is an atom {}, expected a class", *atom_id))),
                 }?;
                 tau.var_type().as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", tau.var_type().full_name())))?.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, tau.var_type().full_name())))?
             } else {
@@ -331,8 +331,8 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 .iter()
                 .map(|a| match a {
                     Slot::Primitive(var) => Ok(var.var_type()),
-                    Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?.var_type()),
-                    Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?.var_type()),
+                    Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.var_type()),
+                    Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.var_type()),
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty function path".into()))?;
@@ -348,15 +348,15 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 match &var {
                     Slot::Primitive(_) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is a primitive variable, expected an object or atom for function call", rest.join(".")))),
                     Slot::ObjectRef(obj_id) => {
-                        let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?;
+                        let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
                         if let Some(function) = obj.class().get_function(last, &arg_types) {
-                            let out = function.call(obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object with id {} does not have an environment", obj_id.0)))?, args)?;
+                            let out = function.call(obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?, args)?;
                             out.ok_or_else(|| RiddleError::RuntimeError(format!("Function '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
                         } else {
                             Err(RiddleError::NotFound(format!("Function '{}' with argument types ({}) not found in class '{}'", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "), obj.class().full_name())))
                         }
                     }
-                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is an atom with id {}, expected an object for function call", rest.join("."), atom_id.0))),
+                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Variable '{}' in function path is an atom {}, expected an object for function call", rest.join("."), *atom_id))),
                 }
             }
         }
@@ -456,8 +456,8 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 .iter()
                 .map(|a| match a {
                     Slot::Primitive(var) => Ok(var.var_type()),
-                    Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object with id {} not found", obj_id.0)))?.var_type()),
-                    Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom with id {} not found", atom_id.0)))?.var_type()),
+                    Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.var_type()),
+                    Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.var_type()),
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let constructor = class.constructor(&arg_types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with argument types ({}) not found", class.full_name(), arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))?;

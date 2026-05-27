@@ -102,7 +102,7 @@ impl CommonCore {
     }
 
     pub fn get_object(&self, id: ObjectId) -> Option<Rc<Object>> {
-        self.objects.borrow().get(id.0).cloned()
+        self.objects.borrow().get(*id).cloned()
     }
 
     pub fn new_object(&self, class: Rc<dyn Class>) -> ObjectId {
@@ -116,7 +116,7 @@ impl CommonCore {
     }
 
     pub fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>> {
-        self.atoms.borrow().get(id.0).cloned()
+        self.atoms.borrow().get(*id).cloned()
     }
 
     pub fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId {
