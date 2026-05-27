@@ -77,8 +77,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-If you need JSON output, the crate re-exports `serde_json` and provides a `ToJson` trait used by core runtime types.
-
 ## What The Language Supports Here
 
 The parser/runtime supports:

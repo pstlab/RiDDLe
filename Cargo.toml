@@ -12,6 +12,3 @@ categories = ["parser-implementations", "compilers"]
 
 [lib]
 name = "riddle"
-
-[dependencies]
-serde_json = "1.0.150"

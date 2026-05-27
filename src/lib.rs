@@ -4,7 +4,6 @@ use crate::{
     parser::Parser,
 };
 use ::core::fmt;
-use serde_json::Value;
 
 pub mod core;
 pub mod env;
@@ -64,8 +63,4 @@ pub fn parse_statement(input: &str) -> Result<Statement, RiddleError> {
 
 pub fn parse_expression(input: &str) -> Result<Expr, RiddleError> {
     Parser::new(Lexer::new(input)).parse_expression()
-}
-
-pub trait ToJson {
-    fn to_json(&self) -> Value;
 }
