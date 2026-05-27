@@ -8,14 +8,31 @@ use std::{
     any::Any,
     cell::RefCell,
     collections::HashMap,
+    ops::Deref,
     rc::{Rc, Weak},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ObjectId(pub(super) usize);
 
+impl Deref for ObjectId {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AtomId(pub(super) usize);
+
+impl Deref for AtomId {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Clone)]
 pub enum Slot {
