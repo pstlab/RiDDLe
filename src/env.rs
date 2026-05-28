@@ -239,21 +239,7 @@ impl Env for Atom {
 
 fn push_negations(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {
-        BoolExpr::Not { var_type, term } => {
-            let inner_expr = push_negations(term.clone());
-            match inner_expr.as_any().downcast_ref::<BoolExpr>() {
-                Some(BoolExpr::Not { var_type: inner_var_type, term: inner_term }) => Rc::new(BoolExpr::Term { var_type: inner_var_type.clone(), term: Slot::Primitive(inner_term.clone()) }),
-                Some(BoolExpr::And { var_type: inner_var_type, terms }) => Rc::new(BoolExpr::Or {
-                    var_type: inner_var_type.clone(),
-                    terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
-                }),
-                Some(BoolExpr::Or { var_type: inner_var_type, terms }) => Rc::new(BoolExpr::And {
-                    var_type: inner_var_type.clone(),
-                    terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
-                }),
-                _ => Rc::new(BoolExpr::Not { var_type: var_type.clone(), term: push_negations(term.clone()) }),
-            }
-        }
+        BoolExpr::Not { term, .. } => push_inverted(term.clone()),
         BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::And {
             var_type: var_type.clone(),
             terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
@@ -262,39 +248,99 @@ fn push_negations(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
             var_type: var_type.clone(),
             terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
         }),
-        _ => expr.clone(),
+        _ => expr,
+    }
+}
+
+/// Processes an expression as if a `Not` wrapper were applied to it.
+fn push_inverted(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+    match expr.as_ref() {
+        // Double Negation: Not(Not(term)) => term
+        BoolExpr::Not { term, .. } => push_negations(term.clone()),
+
+        // De Morgan: Not(And(A, B)) => Or(Not(A), Not(B))
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or {
+            var_type: var_type.clone(),
+            terms: terms.iter().map(|t| push_inverted(t.clone())).collect(),
+        }),
+
+        // De Morgan: Not(Or(A, B)) => And(Not(A), Not(B))
+        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::And {
+            var_type: var_type.clone(),
+            terms: terms.iter().map(|t| push_inverted(t.clone())).collect(),
+        }),
+
+        BoolExpr::Leq { var_type, left, right } => Rc::new(BoolExpr::Lt { var_type: var_type.clone(), left: right.clone(), right: left.clone() }),
+        BoolExpr::Lt { var_type, left, right } => Rc::new(BoolExpr::Leq { var_type: var_type.clone(), left: right.clone(), right: left.clone() }),
+
+        BoolExpr::Term { var_type: var_tp, .. } | BoolExpr::Eq { var_type: var_tp, .. } => Rc::new(BoolExpr::Not { var_type: var_tp.clone(), term: expr }),
     }
 }
 
 fn distribute(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {
         BoolExpr::Or { var_type, terms } => {
-            let distributed_terms: Vec<Rc<BoolExpr>> = terms.iter().map(|t| distribute(t.clone())).collect();
-            let mut result_terms: Vec<Rc<BoolExpr>> = vec![Rc::new(BoolExpr::Term {
-                var_type: var_type.clone(),
-                term: Slot::Primitive(Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![] })),
-            })];
-            for term in distributed_terms {
-                if let BoolExpr::Or { terms: or_terms, .. } = term.as_ref() {
-                    let mut new_result_terms: Vec<Rc<BoolExpr>> = Vec::new();
-                    for res_term in &result_terms {
-                        for or_term in or_terms {
-                            new_result_terms.push(Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![res_term.clone(), or_term.clone()] }));
-                        }
-                    }
-                    result_terms = new_result_terms;
+            // Step 1: Recursively distribute child nodes and flatten any nested Ors
+            let mut distributed_terms = Vec::new();
+            for t in terms {
+                let dist = distribute(t.clone());
+                if let BoolExpr::Or { terms: inner_terms, .. } = dist.as_ref() {
+                    distributed_terms.extend(inner_terms.clone());
                 } else {
-                    result_terms = result_terms.into_iter().map(|res_term| Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![res_term, term.clone()] })).collect();
+                    distributed_terms.push(dist);
                 }
             }
-            Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: result_terms })
+
+            // Step 2: Build the Cartesian product of terms over And boundaries
+            // Start with a pool containing a single empty clause
+            let mut result_ands: Vec<Vec<Rc<BoolExpr>>> = vec![vec![]];
+
+            for term in distributed_terms {
+                if let BoolExpr::And { terms: and_terms, .. } = term.as_ref() {
+                    // Split all existing combinations across the newly encountered And choices
+                    let mut next_ands = Vec::new();
+                    for existing_and in &result_ands {
+                        for and_term in and_terms {
+                            let mut combo = existing_and.clone();
+                            combo.push(and_term.clone());
+                            next_ands.push(combo);
+                        }
+                    }
+                    result_ands = next_ands;
+                } else {
+                    // Leaf nodes or Or nodes get appended to all current paths
+                    for existing_and in &mut result_ands {
+                        existing_and.push(term.clone());
+                    }
+                }
+            }
+
+            // Step 3: Map our combinations back into Or nodes inside a master And node
+            let cnf_or_nodes: Vec<Rc<BoolExpr>> = result_ands.into_iter().map(|sub_terms| Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: sub_terms })).collect();
+
+            // Optimization: If no distribution happened, don't wrap in a redundant And
+            if cnf_or_nodes.len() == 1 { cnf_or_nodes[0].clone() } else { Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: cnf_or_nodes }) }
         }
-        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(|t| distribute(t.clone())).collect() }),
-        _ => expr.clone(),
+
+        BoolExpr::And { var_type, terms } => {
+            // Flatten nested Ands to keep the AST compact
+            let mut distributed_terms = Vec::new();
+            for t in terms {
+                let dist = distribute(t.clone());
+                if let BoolExpr::And { terms: inner_terms, .. } = dist.as_ref() {
+                    distributed_terms.extend(inner_terms.clone());
+                } else {
+                    distributed_terms.push(dist);
+                }
+            }
+            Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: distributed_terms })
+        }
+
+        _ => expr,
     }
 }
 
-pub(crate) fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+pub fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
     distribute(push_negations(expr))
 }
 
