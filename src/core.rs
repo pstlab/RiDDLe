@@ -121,6 +121,7 @@ impl CommonCore {
 
     pub fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId {
         let id = AtomId(self.atoms.borrow().len());
+        predicate.atoms.borrow_mut().push(id);
         self.atoms.borrow_mut().push(Rc::new(Atom::new(id, predicate, fact, args)));
         id
     }

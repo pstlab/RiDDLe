@@ -760,7 +760,7 @@ pub struct Predicate {
     parents: Vec<Vec<String>>,
     args: Vec<(Vec<String>, String)>,
     statements: Vec<Statement>,
-    atoms: RefCell<Vec<AtomId>>,
+    pub(crate) atoms: RefCell<Vec<AtomId>>,
 }
 
 impl Predicate {
