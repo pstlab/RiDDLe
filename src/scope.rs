@@ -846,7 +846,36 @@ impl Scope for Predicate {
     }
 }
 
+/// Resolves a type by a dotted path-like sequence of names.
+///
+/// The first segment is looked up in the provided [`Scope`], and each
+/// subsequent segment is resolved as a nested type of the previous class.
+///
+/// # Errors
+///
+/// Returns:
+/// - [`RiddleError::RuntimeError`] if `path` is empty.
+/// - [`RiddleError::NotFound`] if any path segment cannot be resolved.
+/// - [`RiddleError::NotAClass`] if an intermediate segment does not resolve to a class.
 pub fn get_type_by_path(scope: &dyn Scope, path: &[String]) -> Result<Rc<dyn Type>, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty type path".into()))?;
     rest.iter().try_fold(scope.get_type(first).ok_or_else(|| RiddleError::NotFound(first.clone()))?, |current, part| current.as_class().ok_or_else(|| RiddleError::NotAClass(first.clone()))?.get_type(part).ok_or_else(|| RiddleError::NotFound(format!("Class '{}' in path", part))))
+}
+
+/// Resolves a predicate by path.
+///
+/// All segments except the last are resolved as a type path via
+/// [`get_type_by_path`]. The last segment is then looked up as a predicate
+/// within the resolved class type.
+///
+/// # Errors
+///
+/// Returns:
+/// - [`RiddleError::RuntimeError`] if `path` is empty.
+/// - Any error returned by [`get_type_by_path`] for the prefix path.
+/// - [`RiddleError::NotAClass`] if the resolved type path is not a class.
+/// - [`RiddleError::NotFound`] if the final predicate cannot be resolved.
+pub fn get_predicate_by_path(scope: &dyn Scope, path: &[String]) -> Result<Rc<Predicate>, RiddleError> {
+    let (last, rest) = path.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty predicate path".into()))?;
+    get_type_by_path(scope, rest)?.as_class().ok_or_else(|| RiddleError::NotAClass(rest.join(".")))?.get_predicate(last).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in path", last)))
 }
