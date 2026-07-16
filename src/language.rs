@@ -1,6 +1,6 @@
 use crate::{
     RiddleError,
-    env::{BoolExpr, CommonEnv, Env, Slot, Var, get_var_by_path, to_cnf},
+    env::{BoolExpr, CommonEnv, Env, Slot, Var, get_var_by_path},
     scope::{Scope, Type, get_type_by_path, is_assignable_from},
 };
 use std::{
@@ -137,7 +137,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             if let Slot::Primitive(var) = expr.clone()
                 && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
             {
-                scp.core().assert(to_cnf(bool_expr));
+                scp.core().assert(bool_expr);
                 Ok(())
             } else {
                 Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", expr)))

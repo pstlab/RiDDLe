@@ -1,6 +1,6 @@
 [package]
 name = "riddle-lang"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Riccardo De Benedictis"]
 edition = "2024"
 description = "RiDDLe is a language for the definition of timeline-based domains and problem definitions, designed to facilitate the integration with solvers and to increase modularity and reusability of domain models."
