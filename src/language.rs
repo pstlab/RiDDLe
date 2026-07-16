@@ -291,8 +291,8 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
 pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, RiddleError> {
     match expr {
         Expr::Bool(bool) => Ok(scp.core().new_bool(*bool)),
-        Expr::Int(int) => Ok(scp.core().new_int(&int)),
-        Expr::Real(real) => Ok(scp.core().new_real(&real)),
+        Expr::Int(int) => Ok(scp.core().new_int(int)),
+        Expr::Real(real) => Ok(scp.core().new_real(real)),
         Expr::String(string) => Ok(scp.core().new_string(string)),
         Expr::QualifiedId { ids } => get_var_by_path(scp.core().as_ref(), env.as_ref(), ids),
         Expr::Sum { terms } => {
