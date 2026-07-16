@@ -14,9 +14,9 @@ use std::{
 pub trait Core: Scope + Env {
     fn new_bool(&self, value: bool) -> Slot;
     fn new_bool_var(&self) -> Slot;
-    fn new_int(&self, value: i64) -> Slot;
+    fn new_int(&self, value: &str) -> Slot;
     fn new_int_var(&self) -> Slot;
-    fn new_real(&self, num: i64, den: i64) -> Slot;
+    fn new_real(&self, value: &str) -> Slot;
     fn new_real_var(&self) -> Slot;
     fn new_string(&self, value: &str) -> Slot;
     fn new_string_var(&self) -> Slot;
@@ -223,13 +223,13 @@ mod tests {
         fn new_bool_var(&self) -> Slot {
             Slot::Primitive(Rc::new(TestObject::new(self.bool_type())))
         }
-        fn new_int(&self, _value: i64) -> Slot {
+        fn new_int(&self, _value: &str) -> Slot {
             Slot::Primitive(Rc::new(TestObject::new(self.int_type())))
         }
         fn new_int_var(&self) -> Slot {
             Slot::Primitive(Rc::new(TestObject::new(self.int_type())))
         }
-        fn new_real(&self, _num: i64, _den: i64) -> Slot {
+        fn new_real(&self, _value: &str) -> Slot {
             Slot::Primitive(Rc::new(TestObject::new(self.real_type())))
         }
         fn new_real_var(&self) -> Slot {

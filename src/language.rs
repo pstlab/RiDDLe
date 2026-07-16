@@ -76,8 +76,8 @@ impl fmt::Display for Statement {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Bool(bool),
-    Int(i64),
-    Real(i64, i64),
+    Int(String),
+    Real(String),
     String(String),
     QualifiedId { ids: Vec<String> },
     Sum { terms: Vec<Expr> },
@@ -102,7 +102,7 @@ impl fmt::Display for Expr {
         match self {
             Expr::Bool(b) => write!(f, "{}", b),
             Expr::Int(i) => write!(f, "{}", i),
-            Expr::Real(n, d) => write!(f, "{}/{}", n, d),
+            Expr::Real(r) => write!(f, "{}", r),
             Expr::String(s) => write!(f, "\"{}\"", s),
             Expr::QualifiedId { ids } => write!(f, "{}", ids.join(".")),
             Expr::Sum { terms } => write!(f, "({})", terms.iter().map(|t| format!("{}", t)).collect::<Vec<_>>().join(" + ")),
@@ -291,8 +291,8 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
 pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, RiddleError> {
     match expr {
         Expr::Bool(bool) => Ok(scp.core().new_bool(*bool)),
-        Expr::Int(int) => Ok(scp.core().new_int(*int)),
-        Expr::Real(num, den) => Ok(scp.core().new_real(*num, *den)),
+        Expr::Int(int) => Ok(scp.core().new_int(&int)),
+        Expr::Real(real) => Ok(scp.core().new_real(&real)),
         Expr::String(string) => Ok(scp.core().new_string(string)),
         Expr::QualifiedId { ids } => get_var_by_path(scp.core().as_ref(), env.as_ref(), ids),
         Expr::Sum { terms } => {

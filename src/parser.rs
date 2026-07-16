@@ -560,7 +560,7 @@ impl<'a> Parser<'a> {
                         self.expect(Token::RBracket)?;
                         cost_expr
                     } else {
-                        Expr::Int(1) // default cost
+                        Expr::Int("1".into()) // default cost
                     };
                     branches.push((statements, cost));
                     if let Some(Token::Or) = self.peek(0) {
@@ -765,7 +765,7 @@ impl<'a> Parser<'a> {
             Some(Token::Not) => Ok(Expr::Not { term: Box::new(self.parse_primary_expression()?) }),
             Some(Token::BoolLiteral(value)) => Ok(Expr::Bool(value)),
             Some(Token::IntLiteral(value)) => Ok(Expr::Int(value)),
-            Some(Token::RealLiteral(int_part, frac_part)) => Ok(Expr::Real(int_part, frac_part)),
+            Some(Token::RealLiteral(value)) => Ok(Expr::Real(value)),
             Some(Token::StringLiteral(value)) => Ok(Expr::String(value)),
             Some(Token::Identifier(name)) => {
                 let mut ids = vec![name];
@@ -986,13 +986,13 @@ mod tests {
             assert_eq!(terms.len(), 2);
             if let Expr::Eq { left, right } = &terms[0] {
                 assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::Int(0));
+                assert_eq!(**right, Expr::Int("0".to_string()));
             } else {
                 panic!("Expected equality expression in predicate body");
             }
             if let Expr::Eq { left, right } = &terms[1] {
                 assert_eq!(**left, Expr::QualifiedId { ids: vec!["y".to_string()] });
-                assert_eq!(**right, Expr::Int(0));
+                assert_eq!(**right, Expr::Int("0".to_string()));
             } else {
                 panic!("Expected equality expression in predicate body");
             }
@@ -1110,8 +1110,13 @@ mod tests {
         assert_eq!(predicate.args, vec![(vec!["int".to_string()], "x".to_string())]);
         assert_eq!(predicate.statements.len(), 1);
         if let Statement::Expr(Expr::Eq { left, right }) = &predicate.statements[0] {
-            assert_eq!(**left, Expr::Mul { factors: vec![Expr::Int(2), Expr::QualifiedId { ids: vec!["x".to_string()] }] });
-            assert_eq!(**right, Expr::Int(0));
+            assert_eq!(
+                **left,
+                Expr::Mul {
+                    factors: vec![Expr::Int("2".to_string()), Expr::QualifiedId { ids: vec!["x".to_string()] }]
+                }
+            );
+            assert_eq!(**right, Expr::Int("0".to_string()));
         } else {
             panic!("Expected equality statement in predicate body");
         }
@@ -1131,13 +1136,13 @@ mod tests {
             assert_eq!(disjuncts.len(), 2);
             if let Statement::Expr(Expr::Eq { left, right }) = &disjuncts[0].0[0] {
                 assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::Int(1));
+                assert_eq!(**right, Expr::Int("1".to_string()));
             } else {
                 panic!("Expected equality statement in first disjunct");
             }
             if let Statement::Expr(Expr::Eq { left, right }) = &disjuncts[1].0[0] {
                 assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::Int(2));
+                assert_eq!(**right, Expr::Int("2".to_string()));
             } else {
                 panic!("Expected equality statement in second disjunct");
             }
@@ -1158,8 +1163,8 @@ mod tests {
         let statement = parse_statement(input).expect("Failed to parse priced disjunction");
         if let Statement::Disjunction { disjuncts } = statement {
             assert_eq!(disjuncts.len(), 2);
-            assert_eq!(disjuncts[0].1, Expr::Int(5));
-            assert_eq!(disjuncts[1].1, Expr::Real(100, 10));
+            assert_eq!(disjuncts[0].1, Expr::Int("5".to_string()));
+            assert_eq!(disjuncts[1].1, Expr::Real("10.0".to_string()));
         } else {
             panic!("Expected disjunction statement");
         }
@@ -1205,7 +1210,7 @@ mod tests {
             assert_eq!(args[0].0, "x");
             if let Expr::Mul { factors } = &args[0].1 {
                 assert_eq!(factors.len(), 2);
-                assert_eq!(factors[0], Expr::Int(2));
+                assert_eq!(factors[0], Expr::Int("2".to_string()));
                 assert_eq!(factors[1], Expr::QualifiedId { ids: vec!["x".to_string()] });
             } else {
                 panic!("Expected multiplication expression in formula argument");
@@ -1236,7 +1241,7 @@ mod tests {
         if let Statement::Disjunction { disjuncts } = statement {
             assert_eq!(disjuncts.len(), 2);
             // First disjunct
-            assert_eq!(disjuncts[0].1, Expr::Int(1));
+            assert_eq!(disjuncts[0].1, Expr::Int("1".to_string()));
             if let Statement::ForAll { var_type, var_name, statements } = &disjuncts[0].0[1] {
                 assert_eq!(var_type, &vec!["Point".to_string()]);
                 assert_eq!(var_name, "i");
@@ -1251,7 +1256,7 @@ mod tests {
                 panic!("Expected for loop in first disjunct");
             }
             // Second disjunct
-            assert_eq!(disjuncts[1].1, Expr::Real(420, 10));
+            assert_eq!(disjuncts[1].1, Expr::Real("42.0".to_string()));
             if let Statement::ForAll { var_type, var_name, statements } = &disjuncts[1].0[1] {
                 assert_eq!(var_type, &vec!["Point".to_string()]);
                 assert_eq!(var_name, "j");
@@ -1273,39 +1278,55 @@ mod tests {
         assert_eq!(parse_primary_expression("true"), Expr::Bool(true));
         assert_eq!(parse_primary_expression("false"), Expr::Bool(false));
         assert_eq!(parse_primary_expression("!true"), Expr::Not { term: Box::new(Expr::Bool(true)) });
-        assert_eq!(parse_primary_expression("123"), Expr::Int(123));
-        assert_eq!(parse_primary_expression("12.34"), Expr::Real(1234, 100));
+        assert_eq!(parse_primary_expression("123"), Expr::Int("123".to_string()));
+        assert_eq!(parse_primary_expression("12.34"), Expr::Real("12.34".to_string()));
         assert_eq!(parse_primary_expression("foo"), Expr::QualifiedId { ids: vec!["foo".to_string()] });
         assert_eq!(parse_primary_expression("foo.bar"), Expr::QualifiedId { ids: vec!["foo".to_string(), "bar".to_string()] });
-        assert_eq!(parse_primary_expression("(123)"), Expr::Int(123));
+        assert_eq!(parse_primary_expression("(123)"), Expr::Int("123".to_string()));
         assert_eq!(parse_primary_expression("f()"), Expr::Function { name: vec!["f".to_string()], args: vec![] });
-        assert_eq!(parse_primary_expression("g(1, true)"), Expr::Function { name: vec!["g".to_string()], args: vec![Expr::Int(1), Expr::Bool(true)] });
-        assert_eq!(parse_primary_expression("Math.max(1, 2)"), Expr::Function { name: vec!["Math".to_string(), "max".to_string()], args: vec![Expr::Int(1), Expr::Int(2)] });
+        assert_eq!(parse_primary_expression("g(1, true)"), Expr::Function { name: vec!["g".to_string()], args: vec![Expr::Int("1".to_string()), Expr::Bool(true)] });
+        assert_eq!(
+            parse_primary_expression("Math.max(1, 2)"),
+            Expr::Function {
+                name: vec!["Math".to_string(), "max".to_string()],
+                args: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())]
+            }
+        );
     }
 
     #[test]
     fn test_arithmetic() {
         // 1 + 2
-        assert_eq!(parse_arithmetic_expression("1 + 2"), Expr::Sum { terms: vec![Expr::Int(1), Expr::Int(2)] });
+        assert_eq!(parse_arithmetic_expression("1 + 2"), Expr::Sum { terms: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())] });
 
         // 1 * 2
-        assert_eq!(parse_arithmetic_expression("1 * 2"), Expr::Mul { factors: vec![Expr::Int(1), Expr::Int(2)] });
+        assert_eq!(parse_arithmetic_expression("1 * 2"), Expr::Mul { factors: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())] });
 
         // 1 + 2 * 3
-        assert_eq!(parse_arithmetic_expression("1 + 2 * 3"), Expr::Sum { terms: vec![Expr::Int(1), Expr::Mul { factors: vec![Expr::Int(2), Expr::Int(3)] },] });
+        assert_eq!(
+            parse_arithmetic_expression("1 + 2 * 3"),
+            Expr::Sum {
+                terms: vec![Expr::Int("1".to_string()), Expr::Mul { factors: vec![Expr::Int("2".to_string()), Expr::Int("3".to_string())] },]
+            }
+        );
 
         // (1 + 2) * 3
-        assert_eq!(parse_arithmetic_expression("(1 + 2) * 3"), Expr::Mul { factors: vec![Expr::Sum { terms: vec![Expr::Int(1), Expr::Int(2)] }, Expr::Int(3),] });
+        assert_eq!(
+            parse_arithmetic_expression("(1 + 2) * 3"),
+            Expr::Mul {
+                factors: vec![Expr::Sum { terms: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())] }, Expr::Int("3".to_string()),]
+            }
+        );
     }
 
     #[test]
     fn test_relational() {
-        assert_eq!(parse_equality_expression("1 < 2"), Expr::Lt { left: Box::new(Expr::Int(1)), right: Box::new(Expr::Int(2)) });
-        assert_eq!(parse_equality_expression("1 <= 2"), Expr::Leq { left: Box::new(Expr::Int(1)), right: Box::new(Expr::Int(2)) });
-        assert_eq!(parse_equality_expression("1 > 2"), Expr::Gt { left: Box::new(Expr::Int(1)), right: Box::new(Expr::Int(2)) });
-        assert_eq!(parse_equality_expression("1 >= 2"), Expr::Geq { left: Box::new(Expr::Int(1)), right: Box::new(Expr::Int(2)) });
-        assert_eq!(parse_equality_expression("1 == 1"), Expr::Eq { left: Box::new(Expr::Int(1)), right: Box::new(Expr::Int(1)) });
-        assert_eq!(parse_equality_expression("1 != 2"), Expr::Neq { left: Box::new(Expr::Int(1)), right: Box::new(Expr::Int(2)) });
+        assert_eq!(parse_equality_expression("1 < 2"), Expr::Lt { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
+        assert_eq!(parse_equality_expression("1 <= 2"), Expr::Leq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
+        assert_eq!(parse_equality_expression("1 > 2"), Expr::Gt { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
+        assert_eq!(parse_equality_expression("1 >= 2"), Expr::Geq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
+        assert_eq!(parse_equality_expression("1 == 1"), Expr::Eq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("1".to_string())) });
+        assert_eq!(parse_equality_expression("1 != 2"), Expr::Neq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
     }
 
     #[test]
@@ -1353,19 +1374,19 @@ mod tests {
                                 Expr::Function { name: vec!["f".to_string()], args: vec![Expr::QualifiedId { ids: vec!["x".to_string()] }] },
                                 Expr::Mul {
                                     factors: vec![
-                                        Expr::Int(3),
+                                        Expr::Int("3".to_string()),
                                         Expr::Sum {
-                                            terms: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::Opposite { term: Box::new(Expr::Int(2)) },]
+                                            terms: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::Opposite { term: Box::new(Expr::Int("2".to_string())) },]
                                         }
                                     ]
                                 }
                             ]
                         }),
-                        right: Box::new(Expr::Int(10))
+                        right: Box::new(Expr::Int("10".to_string()))
                     },
                     Expr::Neq {
                         left: Box::new(Expr::Function { name: vec!["g".to_string()], args: vec![Expr::QualifiedId { ids: vec!["z".to_string()] }] }),
-                        right: Box::new(Expr::Int(5))
+                        right: Box::new(Expr::Int("5".to_string()))
                     }
                 ]
             }

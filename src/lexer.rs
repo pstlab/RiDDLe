@@ -5,8 +5,8 @@ use std::str::Chars;
 pub(crate) enum Token {
     Identifier(String),
     BoolLiteral(bool),
-    IntLiteral(i64),
-    RealLiteral(i64, i64),
+    IntLiteral(String),
+    RealLiteral(String),
     StringLiteral(String),
     Plus,
     Minus,
@@ -256,20 +256,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        if has_decimal_point {
-            let mut parts = number.splitn(2, '.');
-            let int_part = parts.next().unwrap_or("0");
-            let frac_part = parts.next().unwrap_or("0");
-            let int_value = int_part.parse::<i64>().unwrap_or(0);
-            let frac_value = frac_part.parse::<i64>().unwrap_or(0);
-            let frac_len = frac_part.len() as u32;
-            let numerator = int_value * 10_i64.pow(frac_len) + frac_value;
-            let denominator = 10_i64.pow(frac_len);
-            Token::RealLiteral(numerator, denominator)
-        } else {
-            let int_value = number.parse::<i64>().unwrap_or(0);
-            Token::IntLiteral(int_value)
-        }
+        if has_decimal_point { Token::RealLiteral(number) } else { Token::IntLiteral(number) }
     }
 
     fn read_identifier(&mut self) -> Token {
@@ -353,7 +340,7 @@ mod tests {
     fn test_lexer_identifiers_and_numbers() {
         let input = "var1 var_2 123 45.67";
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::Identifier("var1".to_string()), Token::Identifier("var_2".to_string()), Token::IntLiteral(123), Token::RealLiteral(4567, 100)];
+        let expected_tokens = vec![Token::Identifier("var1".to_string()), Token::Identifier("var_2".to_string()), Token::IntLiteral("123".to_string()), Token::RealLiteral("45.67".to_string())];
         for expected in expected_tokens {
             let token = lexer.next_token();
             assert_eq!(token, expected);
@@ -398,17 +385,17 @@ mod tests {
         let input = ".5 . .123 0.5";
         let mut lexer = Lexer::new(input);
 
-        // .5 -> RealLiteral(5, 10)
-        assert_eq!(lexer.next_token(), Token::RealLiteral(5, 10));
+        // .5 -> RealLiteral
+        assert_eq!(lexer.next_token(), Token::RealLiteral(".5".to_string()));
 
         // . -> Dot
         assert_eq!(lexer.next_token(), Token::Dot);
 
-        // .123 -> RealLiteral(123, 1000)
-        assert_eq!(lexer.next_token(), Token::RealLiteral(123, 1000));
+        // .123 -> RealLiteral
+        assert_eq!(lexer.next_token(), Token::RealLiteral(".123".to_string()));
 
-        // 0.5 -> RealLiteral(5, 10)
-        assert_eq!(lexer.next_token(), Token::RealLiteral(5, 10));
+        // 0.5 -> RealLiteral
+        assert_eq!(lexer.next_token(), Token::RealLiteral("0.5".to_string()));
     }
 
     #[test]
