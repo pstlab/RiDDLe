@@ -49,159 +49,161 @@ pub(crate) enum Token {
     Eof,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Location {
+    pub line: usize,
+    pub column: usize,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum LexerError {
+    InvalidCharacter(char, Location),
+    UnterminatedString(Location),
+}
+
 pub(crate) struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
+    current_loc: Location,
 }
 
 impl<'a> Lexer<'a> {
     pub(crate) fn new(input: &'a str) -> Self {
-        Lexer { input: input.chars().peekable() }
+        Lexer { input: input.chars().peekable(), current_loc: Location { line: 1, column: 1 } }
     }
 
-    pub(crate) fn next_token(&mut self) -> Token {
+    pub(crate) fn next_token(&mut self) -> Result<(Location, Token, Location), LexerError> {
         self.skip_whitespace_and_comments();
+        let start_loc = self.current_loc;
         match self.input.peek() {
             Some(&ch) => match ch {
                 '+' => {
-                    self.input.next();
-                    Token::Plus
+                    self.advance();
+                    Ok((start_loc, Token::Plus, self.current_loc))
                 }
                 '-' => {
-                    self.input.next();
-                    Token::Minus
+                    self.advance();
+                    Ok((start_loc, Token::Minus, self.current_loc))
                 }
                 '*' => {
-                    self.input.next();
-                    Token::Asterisk
+                    self.advance();
+                    Ok((start_loc, Token::Asterisk, self.current_loc))
                 }
                 '/' => {
-                    self.input.next();
-                    Token::Slash
+                    self.advance();
+                    Ok((start_loc, Token::Slash, self.current_loc))
                 }
                 '&' => {
-                    self.input.next();
-                    Token::Amp
+                    self.advance();
+                    Ok((start_loc, Token::Amp, self.current_loc))
                 }
                 '|' => {
-                    self.input.next();
-                    Token::Bar
+                    self.advance();
+                    Ok((start_loc, Token::Bar, self.current_loc))
                 }
                 '.' => {
                     let mut lookahead = self.input.clone();
                     lookahead.next();
                     if let Some(&ch) = lookahead.peek() {
                         if ch.is_ascii_digit() {
-                            self.read_number()
+                            self.read_number(start_loc)
                         } else {
-                            self.input.next();
-                            Token::Dot
+                            self.advance();
+                            Ok((start_loc, Token::Dot, self.current_loc))
                         }
                     } else {
-                        self.input.next();
-                        Token::Dot
+                        self.advance();
+                        Ok((start_loc, Token::Dot, self.current_loc))
                     }
                 }
                 '(' => {
-                    self.input.next();
-                    Token::LParen
+                    self.advance();
+                    Ok((start_loc, Token::LParen, self.current_loc))
                 }
                 ')' => {
-                    self.input.next();
-                    Token::RParen
+                    self.advance();
+                    Ok((start_loc, Token::RParen, self.current_loc))
                 }
                 '[' => {
-                    self.input.next();
-                    Token::LBracket
+                    self.advance();
+                    Ok((start_loc, Token::LBracket, self.current_loc))
                 }
                 ']' => {
-                    self.input.next();
-                    Token::RBracket
+                    self.advance();
+                    Ok((start_loc, Token::RBracket, self.current_loc))
                 }
                 '{' => {
-                    self.input.next();
-                    Token::LBrace
+                    self.advance();
+                    Ok((start_loc, Token::LBrace, self.current_loc))
                 }
                 '}' => {
-                    self.input.next();
-                    Token::RBrace
+                    self.advance();
+                    Ok((start_loc, Token::RBrace, self.current_loc))
                 }
                 ',' => {
-                    self.input.next();
-                    Token::Comma
+                    self.advance();
+                    Ok((start_loc, Token::Comma, self.current_loc))
                 }
                 ':' => {
-                    self.input.next();
-                    Token::Colon
+                    self.advance();
+                    Ok((start_loc, Token::Colon, self.current_loc))
                 }
                 '=' => {
-                    self.input.next();
+                    self.advance();
                     if let Some(&'=') = self.input.peek() {
-                        self.input.next();
-                        Token::EqualEqual
+                        self.advance();
+                        Ok((start_loc, Token::EqualEqual, self.current_loc))
                     } else {
-                        Token::Equal
+                        Ok((start_loc, Token::Equal, self.current_loc))
                     }
                 }
                 '!' => {
-                    self.input.next();
+                    self.advance();
                     if let Some(&'=') = self.input.peek() {
-                        self.input.next();
-                        Token::NotEqual
+                        self.advance();
+                        Ok((start_loc, Token::NotEqual, self.current_loc))
                     } else {
-                        Token::Not
+                        Ok((start_loc, Token::Not, self.current_loc))
                     }
                 }
                 '<' => {
-                    self.input.next();
+                    self.advance();
                     if let Some(&'=') = self.input.peek() {
-                        self.input.next();
-                        Token::LessEqual
+                        self.advance();
+                        Ok((start_loc, Token::LessEqual, self.current_loc))
                     } else {
-                        Token::LessThan
+                        Ok((start_loc, Token::LessThan, self.current_loc))
                     }
                 }
                 '>' => {
-                    self.input.next();
+                    self.advance();
                     if let Some(&'=') = self.input.peek() {
-                        self.input.next();
-                        Token::GreaterEqual
+                        self.advance();
+                        Ok((start_loc, Token::GreaterEqual, self.current_loc))
                     } else {
-                        Token::GreaterThan
+                        Ok((start_loc, Token::GreaterThan, self.current_loc))
                     }
                 }
                 ';' => {
-                    self.input.next();
-                    Token::Semicolon
+                    self.advance();
+                    Ok((start_loc, Token::Semicolon, self.current_loc))
                 }
-                '"' => {
-                    self.input.next(); // consume opening quote
-                    let mut string = String::new();
-                    while let Some(&ch) = self.input.peek() {
-                        if ch == '"' {
-                            self.input.next(); // consume closing quote
-                            break;
-                        } else {
-                            string.push(ch);
-                            self.input.next();
-                        }
-                    }
-                    Token::StringLiteral(string)
-                }
-                '0'..='9' => self.read_number(),
-                'a'..='z' | 'A'..='Z' | '_' => self.read_identifier(),
+                '"' => self.read_string(start_loc),
+                '0'..='9' => self.read_number(start_loc),
+                'a'..='z' | 'A'..='Z' | '_' => self.read_identifier(start_loc),
                 _ => {
-                    self.input.next();
-                    self.next_token()
+                    self.advance();
+                    // Rilevato carattere non valido! Lanciamo l'errore con la sua posizione
+                    Err(LexerError::InvalidCharacter(ch, start_loc))
                 }
             },
-            None => Token::Eof,
+            None => Ok((start_loc, Token::Eof, self.current_loc)),
         }
     }
 
     fn skip_whitespace(&mut self) {
         while let Some(&ch) = self.input.peek() {
             if ch.is_whitespace() {
-                self.input.next();
+                self.advance();
             } else {
                 break;
             }
@@ -215,19 +217,19 @@ impl<'a> Lexer<'a> {
             let mut lookahead = self.input.clone();
             match (lookahead.next(), lookahead.next()) {
                 (Some('/'), Some('/')) => {
-                    self.input.next();
-                    self.input.next();
-                    for ch in self.input.by_ref() {
+                    self.advance();
+                    self.advance();
+                    while let Some(ch) = self.advance() {
                         if ch == '\n' {
                             break;
                         }
                     }
                 }
                 (Some('/'), Some('*')) => {
-                    self.input.next();
-                    self.input.next();
+                    self.advance();
+                    self.advance();
                     let mut prev = '\0';
-                    for ch in self.input.by_ref() {
+                    while let Some(ch) = self.advance() {
                         if prev == '*' && ch == '/' {
                             break;
                         }
@@ -239,64 +241,118 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_number(&mut self) -> Token {
+    fn advance(&mut self) -> Option<char> {
+        match self.input.next() {
+            Some(ch) => {
+                if ch == '\n' {
+                    self.current_loc.line += 1;
+                    self.current_loc.column = 1;
+                } else {
+                    self.current_loc.column += 1;
+                }
+                Some(ch)
+            }
+            None => None,
+        }
+    }
+
+    fn read_number(&mut self, start_loc: Location) -> Result<(Location, Token, Location), LexerError> {
         let mut number = String::new();
         let mut has_decimal_point = false;
 
         while let Some(&ch) = self.input.peek() {
             if ch.is_ascii_digit() {
                 number.push(ch);
-                self.input.next();
+                self.advance();
             } else if ch == '.' && !has_decimal_point {
                 has_decimal_point = true;
                 number.push(ch);
-                self.input.next();
+                self.advance();
             } else {
                 break;
             }
         }
 
-        if has_decimal_point { Token::RealLiteral(number) } else { Token::IntLiteral(number) }
+        if has_decimal_point { Ok((start_loc, Token::RealLiteral(number), self.current_loc)) } else { Ok((start_loc, Token::IntLiteral(number), self.current_loc)) }
     }
 
-    fn read_identifier(&mut self) -> Token {
+    fn read_identifier(&mut self, start_loc: Location) -> Result<(Location, Token, Location), LexerError> {
         let mut identifier = String::new();
         while let Some(&ch) = self.input.peek() {
             if ch.is_ascii_alphanumeric() || ch == '_' {
                 identifier.push(ch);
-                self.input.next();
+                self.advance();
             } else {
                 break;
             }
         }
         match identifier.as_str() {
-            "true" => Token::BoolLiteral(true),
-            "false" => Token::BoolLiteral(false),
-            "bool" => Token::Bool,
-            "int" => Token::Int,
-            "real" => Token::Real,
-            "string" => Token::String,
-            "class" => Token::Class,
-            "predicate" => Token::Predicate,
-            "new" => Token::New,
-            "for" => Token::For,
-            "this" => Token::This,
-            "void" => Token::Void,
-            "return" => Token::Return,
-            "fact" => Token::Fact,
-            "goal" => Token::Goal,
-            "or" => Token::Or,
-            _ => Token::Identifier(identifier),
+            "true" => Ok((start_loc, Token::BoolLiteral(true), self.current_loc)),
+            "false" => Ok((start_loc, Token::BoolLiteral(false), self.current_loc)),
+            "bool" => Ok((start_loc, Token::Bool, self.current_loc)),
+            "int" => Ok((start_loc, Token::Int, self.current_loc)),
+            "real" => Ok((start_loc, Token::Real, self.current_loc)),
+            "string" => Ok((start_loc, Token::String, self.current_loc)),
+            "class" => Ok((start_loc, Token::Class, self.current_loc)),
+            "predicate" => Ok((start_loc, Token::Predicate, self.current_loc)),
+            "new" => Ok((start_loc, Token::New, self.current_loc)),
+            "for" => Ok((start_loc, Token::For, self.current_loc)),
+            "this" => Ok((start_loc, Token::This, self.current_loc)),
+            "void" => Ok((start_loc, Token::Void, self.current_loc)),
+            "return" => Ok((start_loc, Token::Return, self.current_loc)),
+            "fact" => Ok((start_loc, Token::Fact, self.current_loc)),
+            "goal" => Ok((start_loc, Token::Goal, self.current_loc)),
+            "or" => Ok((start_loc, Token::Or, self.current_loc)),
+            _ => Ok((start_loc, Token::Identifier(identifier), self.current_loc)),
         }
+    }
+
+    fn read_string(&mut self, start_loc: Location) -> Result<(Location, Token, Location), LexerError> {
+        self.advance();
+        let mut string = String::new();
+
+        while let Some(&ch) = self.input.peek() {
+            match ch {
+                '"' => {
+                    self.advance();
+                    return Ok((start_loc, Token::StringLiteral(string), self.current_loc));
+                }
+                '\\' => {
+                    self.advance();
+                    if let Some(&escape_ch) = self.input.peek() {
+                        match escape_ch {
+                            'n' => string.push('\n'),
+                            't' => string.push('\t'),
+                            'r' => string.push('\r'),
+                            '\\' => string.push('\\'),
+                            '"' => string.push('"'),
+                            _ => {
+                                string.push('\\');
+                                string.push(escape_ch);
+                            }
+                        }
+                        self.advance();
+                    }
+                }
+                _ => {
+                    string.push(ch);
+                    self.advance();
+                }
+            }
+        }
+
+        Err(LexerError::UnterminatedString(start_loc))
     }
 }
 
-impl Iterator for Lexer<'_> {
-    type Item = Token;
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Result<(Location, Token, Location), LexerError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let token = self.next_token();
-        if token == Token::Eof { None } else { Some(token) }
+        match self.next_token() {
+            Ok((_, Token::Eof, _)) => None,
+            other => Some(other),
+        }
     }
 }
 
@@ -331,7 +387,7 @@ mod tests {
             Token::GreaterEqual,
         ];
         for expected in expected_tokens {
-            let token = lexer.next_token();
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
         }
     }
@@ -342,7 +398,7 @@ mod tests {
         let mut lexer = Lexer::new(input);
         let expected_tokens = vec![Token::Identifier("var1".to_string()), Token::Identifier("var_2".to_string()), Token::IntLiteral("123".to_string()), Token::RealLiteral("45.67".to_string())];
         for expected in expected_tokens {
-            let token = lexer.next_token();
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
         }
     }
@@ -353,7 +409,7 @@ mod tests {
         let mut lexer = Lexer::new(input);
         let expected_tokens = vec![Token::StringLiteral("hello".to_string()), Token::StringLiteral("world".to_string())];
         for expected in expected_tokens {
-            let token = lexer.next_token();
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
         }
     }
@@ -364,7 +420,7 @@ mod tests {
         let mut lexer = Lexer::new(input);
         let expected_tokens = vec![Token::Int, Token::Real, Token::String, Token::Class, Token::Predicate, Token::New, Token::For, Token::This, Token::Void, Token::Return, Token::Fact, Token::Goal, Token::Or];
         for expected in expected_tokens {
-            let token = lexer.next_token();
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
         }
     }
@@ -375,7 +431,7 @@ mod tests {
         let mut lexer = Lexer::new(input);
         let expected_tokens = vec![Token::Class, Token::Identifier("Person".to_string()), Token::LBrace, Token::Int, Token::Identifier("age".to_string()), Token::Semicolon, Token::String, Token::Identifier("name".to_string()), Token::Semicolon, Token::RBrace];
         for expected in expected_tokens {
-            let token = lexer.next_token();
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
         }
     }
@@ -386,16 +442,20 @@ mod tests {
         let mut lexer = Lexer::new(input);
 
         // .5 -> RealLiteral
-        assert_eq!(lexer.next_token(), Token::RealLiteral(".5".to_string()));
+        let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+        assert_eq!(token, Token::RealLiteral(".5".to_string()));
 
         // . -> Dot
-        assert_eq!(lexer.next_token(), Token::Dot);
+        let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+        assert_eq!(token, Token::Dot);
 
         // .123 -> RealLiteral
-        assert_eq!(lexer.next_token(), Token::RealLiteral(".123".to_string()));
+        let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+        assert_eq!(token, Token::RealLiteral(".123".to_string()));
 
         // 0.5 -> RealLiteral
-        assert_eq!(lexer.next_token(), Token::RealLiteral("0.5".to_string()));
+        let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+        assert_eq!(token, Token::RealLiteral("0.5".to_string()));
     }
 
     #[test]
@@ -405,7 +465,8 @@ mod tests {
         let expected_tokens = vec![Token::Int, Token::Identifier("x".to_string()), Token::Semicolon, Token::Real, Token::Identifier("y".to_string()), Token::Semicolon];
 
         for expected in expected_tokens {
-            assert_eq!(lexer.next_token(), expected);
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+            assert_eq!(token, expected);
         }
     }
 
@@ -416,7 +477,8 @@ mod tests {
         let expected_tokens = vec![Token::Int, Token::Identifier("value".to_string()), Token::Semicolon];
 
         for expected in expected_tokens {
-            assert_eq!(lexer.next_token(), expected);
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+            assert_eq!(token, expected);
         }
     }
 
@@ -427,7 +489,8 @@ mod tests {
         let expected_tokens = vec![Token::Identifier("a".to_string()), Token::Slash, Token::Identifier("b".to_string())];
 
         for expected in expected_tokens {
-            assert_eq!(lexer.next_token(), expected);
+            let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
+            assert_eq!(token, expected);
         }
     }
 }
