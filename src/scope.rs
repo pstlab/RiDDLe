@@ -744,9 +744,6 @@ pub fn is_assignable_from(target: &Rc<dyn Type>, source: &Rc<dyn Type>) -> bool 
         if is_subclass_of(source_class.clone(), &target_class.full_name()) {
             return true;
         }
-        if is_subclass_of(target_class, &source_class.full_name()) {
-            return true;
-        }
     }
     false
 }
