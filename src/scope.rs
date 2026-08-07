@@ -740,10 +740,9 @@ pub fn is_assignable_from(target: &Rc<dyn Type>, source: &Rc<dyn Type>) -> bool 
 
     if let Some(target_class) = target.clone().as_class()
         && let Some(source_class) = source.clone().as_class()
+        && is_subclass_of(source_class.clone(), &target_class.full_name())
     {
-        if is_subclass_of(source_class.clone(), &target_class.full_name()) {
-            return true;
-        }
+        return true;
     }
     false
 }
