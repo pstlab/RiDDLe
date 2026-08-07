@@ -738,14 +738,14 @@ pub fn is_assignable_from(target: &Rc<dyn Type>, source: &Rc<dyn Type>) -> bool 
         return true;
     }
 
-    if let Some(target_class) = target.clone().as_class() {
-        if let Some(source_class) = source.clone().as_class() {
-            if is_subclass_of(source_class.clone(), &target_class.full_name()) {
-                return true;
-            }
-            if is_subclass_of(target_class, &source_class.full_name()) {
-                return true;
-            }
+    if let Some(target_class) = target.clone().as_class()
+        && let Some(source_class) = source.clone().as_class()
+    {
+        if is_subclass_of(source_class.clone(), &target_class.full_name()) {
+            return true;
+        }
+        if is_subclass_of(target_class, &source_class.full_name()) {
+            return true;
         }
     }
     false
@@ -756,12 +756,11 @@ fn is_subclass_of(current_class: Rc<dyn Class>, target_full_name: &str) -> bool 
         if parent_path.iter().map(|s| s.as_str()).eq(target_full_name.split('.')) {
             return true;
         }
-        if let Ok(parent_type) = get_type_by_path(&*current_class, parent_path) {
-            if let Some(parent_class) = parent_type.as_class() {
-                if is_subclass_of(parent_class, target_full_name) {
-                    return true;
-                }
-            }
+        if let Ok(parent_type) = get_type_by_path(&*current_class, parent_path)
+            && let Some(parent_class) = parent_type.as_class()
+            && is_subclass_of(parent_class, target_full_name)
+        {
+            return true;
         }
     }
     false
