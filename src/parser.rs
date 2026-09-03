@@ -771,7 +771,14 @@ impl<'a> Parser<'a> {
             Ok(Some((_, Token::Not, _))) => Ok(Expr::Not { term: Box::new(self.parse_primary_expression()?) }),
             Ok(Some((_, Token::BoolLiteral(value), _))) => Ok(Expr::Bool(value)),
             Ok(Some((_, Token::IntLiteral(value), _))) => Ok(Expr::Int(value)),
-            Ok(Some((_, Token::RealLiteral(value), _))) => Ok(Expr::Real(value)),
+            Ok(Some((_, Token::RealLiteral(value), _))) => {
+                if value.contains('.') {
+                    let (whole, fraction) = value.split_once('.').unwrap();
+                    if fraction.is_empty() { Err(RiddleError::RuntimeError(format!("Invalid real literal: {}", value))) } else { Ok(Expr::Real(format!("{whole}{fraction}"), format!("1{}", "0".repeat(fraction.len())))) }
+                } else {
+                    Ok(Expr::Int(value))
+                }
+            }
             Ok(Some((_, Token::StringLiteral(value), _))) => Ok(Expr::String(value)),
             Ok(Some((_, Token::Identifier(name), _))) => {
                 let mut ids = vec![name];
@@ -1171,7 +1178,7 @@ mod tests {
         if let Statement::Disjunction { disjuncts } = statement {
             assert_eq!(disjuncts.len(), 2);
             assert_eq!(disjuncts[0].1, Expr::Int("5".to_string()));
-            assert_eq!(disjuncts[1].1, Expr::Real("10.0".to_string()));
+            assert_eq!(disjuncts[1].1, Expr::Real("100".to_string(), "10".to_string()));
         } else {
             panic!("Expected disjunction statement");
         }
@@ -1263,7 +1270,7 @@ mod tests {
                 panic!("Expected for loop in first disjunct");
             }
             // Second disjunct
-            assert_eq!(disjuncts[1].1, Expr::Real("42.0".to_string()));
+            assert_eq!(disjuncts[1].1, Expr::Real("420".to_string(), "10".to_string()));
             if let Statement::ForAll { var_type, var_name, statements } = &disjuncts[1].0[1] {
                 assert_eq!(var_type, &vec!["Point".to_string()]);
                 assert_eq!(var_name, "j");
@@ -1286,7 +1293,7 @@ mod tests {
         assert_eq!(parse_primary_expression("false"), Expr::Bool(false));
         assert_eq!(parse_primary_expression("!true"), Expr::Not { term: Box::new(Expr::Bool(true)) });
         assert_eq!(parse_primary_expression("123"), Expr::Int("123".to_string()));
-        assert_eq!(parse_primary_expression("12.34"), Expr::Real("12.34".to_string()));
+        assert_eq!(parse_primary_expression("12.34"), Expr::Real("1234".to_string(), "100".to_string()));
         assert_eq!(parse_primary_expression("foo"), Expr::QualifiedId { ids: vec!["foo".to_string()] });
         assert_eq!(parse_primary_expression("foo.bar"), Expr::QualifiedId { ids: vec!["foo".to_string(), "bar".to_string()] });
         assert_eq!(parse_primary_expression("(123)"), Expr::Int("123".to_string()));

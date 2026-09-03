@@ -16,7 +16,7 @@ pub trait Core: Scope + Env {
     fn new_bool_var(&self) -> Slot;
     fn new_int(&self, value: &str) -> Slot;
     fn new_int_var(&self) -> Slot;
-    fn new_real(&self, value: &str) -> Slot;
+    fn new_real(&self, num: &str, den: &str) -> Slot;
     fn new_real_var(&self) -> Slot;
     fn new_string(&self, value: &str) -> Slot;
     fn new_string_var(&self) -> Slot;
@@ -229,7 +229,7 @@ mod tests {
         fn new_int_var(&self) -> Slot {
             Slot::Primitive(Rc::new(TestObject::new(self.int_type())))
         }
-        fn new_real(&self, _value: &str) -> Slot {
+        fn new_real(&self, _num: &str, _den: &str) -> Slot {
             Slot::Primitive(Rc::new(TestObject::new(self.real_type())))
         }
         fn new_real_var(&self) -> Slot {

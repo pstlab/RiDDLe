@@ -122,7 +122,7 @@ impl Core for TestCore {
     fn new_int_var(&self) -> Slot {
         Slot::Primitive(Rc::new(TestObject::new(self.int_type())))
     }
-    fn new_real(&self, _value: &str) -> Slot {
+    fn new_real(&self, _num: &str, _den: &str) -> Slot {
         Slot::Primitive(Rc::new(TestObject::new(self.real_type())))
     }
     fn new_real_var(&self) -> Slot {
