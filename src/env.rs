@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
     core::Core,
-    scope::{BoolType, Class, Predicate, Scope, Type},
+    scope::{Class, Predicate, Scope, Type},
 };
 use core::fmt;
 use std::{
@@ -103,13 +103,13 @@ impl Env for CommonEnv {
 }
 
 pub enum BoolExpr {
-    Term { var_type: Weak<BoolType>, term: Slot },
-    Not { var_type: Weak<BoolType>, term: Rc<BoolExpr> },
-    Eq { var_type: Weak<BoolType>, left: Slot, right: Slot },
-    Lt { var_type: Weak<BoolType>, left: Slot, right: Slot },
-    Leq { var_type: Weak<BoolType>, left: Slot, right: Slot },
-    Or { var_type: Weak<BoolType>, terms: Vec<Rc<BoolExpr>> },
-    And { var_type: Weak<BoolType>, terms: Vec<Rc<BoolExpr>> },
+    Term { var_type: Weak<dyn Type>, term: Slot },
+    Not { var_type: Weak<dyn Type>, term: Rc<BoolExpr> },
+    Eq { var_type: Weak<dyn Type>, left: Slot, right: Slot },
+    Lt { var_type: Weak<dyn Type>, left: Slot, right: Slot },
+    Leq { var_type: Weak<dyn Type>, left: Slot, right: Slot },
+    Or { var_type: Weak<dyn Type>, terms: Vec<Rc<BoolExpr>> },
+    And { var_type: Weak<dyn Type>, terms: Vec<Rc<BoolExpr>> },
 }
 
 impl Var for BoolExpr {

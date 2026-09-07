@@ -35,20 +35,20 @@ pub trait Core: Scope + Env {
     fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId;
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>>;
 
-    fn bool_type(&self) -> Rc<BoolType> {
-        self.get_type("bool").expect("Core should have bool type").as_any().downcast::<BoolType>().expect("Core bool type should be BoolType")
+    fn bool_type(&self) -> Rc<dyn Type> {
+        self.get_type("bool").expect("Core should have bool type")
     }
 
-    fn int_type(&self) -> Rc<IntType> {
-        self.get_type("int").expect("Core should have int type").as_any().downcast::<IntType>().expect("Core int type should be IntType")
+    fn int_type(&self) -> Rc<dyn Type> {
+        self.get_type("int").expect("Core should have int type")
     }
 
-    fn real_type(&self) -> Rc<RealType> {
-        self.get_type("real").expect("Core should have real type").as_any().downcast::<RealType>().expect("Core real type should be RealType")
+    fn real_type(&self) -> Rc<dyn Type> {
+        self.get_type("real").expect("Core should have real type")
     }
 
-    fn string_type(&self) -> Rc<StringType> {
-        self.get_type("string").expect("Core should have string type").as_any().downcast::<StringType>().expect("Core string type should be StringType")
+    fn string_type(&self) -> Rc<dyn Type> {
+        self.get_type("string").expect("Core should have string type")
     }
 }
 

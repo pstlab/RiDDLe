@@ -5,7 +5,6 @@ use crate::{
     language::{ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, Statement, evaluate, execute},
 };
 use std::{
-    any::Any,
     cell::RefCell,
     collections::HashMap,
     fmt,
@@ -17,7 +16,6 @@ pub trait Type {
     fn full_name(&self) -> String {
         self.name().to_string()
     }
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any>;
     fn as_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
         None
     }
@@ -41,12 +39,9 @@ impl Type for BoolType {
         "bool"
     }
 
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
-
     fn new_instance(self: Rc<Self>) -> Slot {
-        Slot::Primitive(Rc::new(BoolExpr::Term { var_type: Rc::downgrade(&self), term: self.core.upgrade().unwrap().new_bool_var() }))
+        let var_type = Rc::downgrade(&self);
+        Slot::Primitive(Rc::new(BoolExpr::Term { var_type, term: self.core.upgrade().unwrap().new_bool_var() }))
     }
 }
 
@@ -64,10 +59,6 @@ impl IntType {
 impl Type for IntType {
     fn name(&self) -> &str {
         "int"
-    }
-
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
     }
 
     fn new_instance(self: Rc<Self>) -> Slot {
@@ -91,10 +82,6 @@ impl Type for RealType {
         "real"
     }
 
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
-
     fn new_instance(self: Rc<Self>) -> Slot {
         self.core.upgrade().unwrap().new_real_var()
     }
@@ -114,10 +101,6 @@ impl StringType {
 impl Type for StringType {
     fn name(&self) -> &str {
         "string"
-    }
-
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
     }
 
     fn new_instance(self: Rc<Self>) -> Slot {
@@ -562,6 +545,7 @@ pub trait Class: Type + Scope {
     fn predicates(&self) -> Vec<Rc<Predicate>>;
     fn classes(&self) -> Vec<Rc<dyn Class>>;
     fn instances(&self) -> Vec<ObjectId>;
+    fn add_instance(&self, instance: ObjectId);
 }
 
 pub struct CommonClass {
@@ -606,10 +590,6 @@ impl Type for CommonClass {
         }
     }
 
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
-
     fn as_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
         Some(self)
     }
@@ -619,7 +599,7 @@ impl Type for CommonClass {
         self.instances.borrow_mut().push(instance);
         for parent in &self.parents {
             let parent_class = get_type_by_path(self.as_ref(), parent).expect("Parent class should exist").as_class().expect("Parent class should be a class");
-            parent_class.as_any().downcast_ref::<CommonClass>().expect("Parent class should be a CommonClass").instances.borrow_mut().push(instance);
+            parent_class.add_instance(instance);
         }
         Slot::ObjectRef(instance)
     }
@@ -695,15 +675,11 @@ impl Class for CommonClass {
     }
 
     fn instances(&self) -> Vec<ObjectId> {
-        let mut instances = self.instances.borrow().clone();
-        for parent in &self.parents {
-            if let Some(parent_class) = self.core().get_type(&parent.join("."))
-                && let Some(parent_class) = parent_class.as_class()
-            {
-                instances.extend(parent_class.instances());
-            }
-        }
-        instances
+        self.instances.borrow().clone()
+    }
+
+    fn add_instance(&self, instance: ObjectId) {
+        self.instances.borrow_mut().push(instance);
     }
 }
 
@@ -813,10 +789,6 @@ impl Predicate {
 impl Type for Predicate {
     fn name(&self) -> &str {
         &self.name
-    }
-
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
     }
 
     fn new_instance(self: Rc<Self>) -> Slot {
