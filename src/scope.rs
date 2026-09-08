@@ -857,5 +857,9 @@ pub fn get_type_by_path(scope: &dyn Scope, path: &[String]) -> Result<Rc<dyn Typ
 /// - [`RiddleError::NotFound`] if the final predicate cannot be resolved.
 pub fn get_predicate_by_path(scope: &dyn Scope, path: &[String]) -> Result<Rc<Predicate>, RiddleError> {
     let (last, rest) = path.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty predicate path".into()))?;
-    get_type_by_path(scope, rest)?.as_class().ok_or_else(|| RiddleError::NotAClass(rest.join(".")))?.get_predicate(last).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in path", last)))
+    if rest.is_empty() {
+        scope.get_predicate(last).ok_or_else(|| RiddleError::NotFound(last.clone()))
+    } else {
+        get_type_by_path(scope, rest)?.as_class().ok_or_else(|| RiddleError::NotAClass(rest.join(".")))?.get_predicate(last).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in path", last)))
+    }
 }
