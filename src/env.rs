@@ -12,7 +12,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ObjectId(pub(super) usize);
 
 impl From<usize> for ObjectId {
@@ -35,7 +35,7 @@ impl fmt::Display for ObjectId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AtomId(pub(super) usize);
 
 impl Deref for AtomId {
