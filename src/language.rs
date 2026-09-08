@@ -251,6 +251,8 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 .collect::<Result<_, _>>()?;
             if let Some(tau) = tau {
                 args.insert("tau".to_string(), tau);
+            } else if let Some(tau) = env.get("tau") {
+                args.insert("tau".to_string(), tau);
             }
             let mut pred_hierarchy = VecDeque::from(vec![predicate.clone()]);
             while let Some(pred) = pred_hierarchy.pop_front() {
