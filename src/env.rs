@@ -15,6 +15,12 @@ use std::{
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ObjectId(pub(super) usize);
 
+impl From<usize> for ObjectId {
+    fn from(val: usize) -> Self {
+        ObjectId(val)
+    }
+}
+
 impl Deref for ObjectId {
     type Target = usize;
 
