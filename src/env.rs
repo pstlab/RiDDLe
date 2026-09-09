@@ -156,7 +156,7 @@ pub struct Object {
 
 impl Object {
     pub(super) fn new(id: ObjectId, class: Rc<dyn Class>) -> Self {
-        Self { id, class: Rc::downgrade(&class), env: CommonEnv::new(None) }
+        Self { id, class: Rc::downgrade(&class), env: CommonEnv::new(Some(class.core())) }
     }
 
     pub fn id(&self) -> ObjectId {
@@ -209,14 +209,16 @@ pub struct Atom {
 
 impl Atom {
     pub fn new(id: AtomId, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Self {
+        // Determine the environment for this atom based on the "tau" argument, if present.
         let env = match args.get("tau") {
             Some(tau) => match tau {
                 Slot::Primitive(var) => var.clone().as_env().expect("Tau variable does not have an environment").clone(),
                 Slot::ObjectRef(obj_id) => predicate.clone().core().get_object(*obj_id).expect("Object ID in tau does not exist").as_env().expect("Object in tau does not have an environment").clone(),
                 Slot::AtomRef(atom_id) => predicate.clone().core().get_atom(*atom_id).expect("Atom ID in tau does not exist").as_env().expect("Atom in tau does not have an environment").clone(),
             },
-            None => predicate.clone().core(),
+            None => predicate.core(),
         };
+        // Create a new CommonEnv for this atom, with the determined environment as its parent.
         let env = CommonEnv::new(Some(env));
         for (name, value) in args {
             env.set(name, value);
