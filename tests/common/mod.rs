@@ -65,6 +65,10 @@ impl Env for TestEnum {
         None
     }
 
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.variables.borrow().clone()
+    }
+
     fn get(&self, name: &str) -> Option<Slot> {
         if let Some(var) = self.variables.borrow().get(name) {
             return Some(var.clone());
@@ -215,6 +219,10 @@ impl Scope for TestCore {
 impl Env for TestCore {
     fn parent(&self) -> Option<Rc<dyn Env>> {
         None
+    }
+
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.core.get_slots()
     }
 
     fn get(&self, name: &str) -> Option<Slot> {

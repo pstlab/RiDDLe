@@ -162,6 +162,10 @@ impl Env for CommonCore {
         None
     }
 
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.env.get_slots()
+    }
+
     fn get(&self, name: &str) -> Option<Slot> {
         self.env.get(name)
     }
@@ -322,6 +326,10 @@ mod tests {
     impl Env for TestCore {
         fn parent(&self) -> Option<Rc<dyn Env>> {
             None
+        }
+
+        fn get_slots(&self) -> HashMap<String, Slot> {
+            self.core.get_slots()
         }
 
         fn get(&self, name: &str) -> Option<Slot> {

@@ -46,6 +46,12 @@ impl Deref for AtomId {
     }
 }
 
+impl From<usize> for AtomId {
+    fn from(val: usize) -> Self {
+        AtomId(val)
+    }
+}
+
 impl fmt::Display for AtomId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "atm-{}", self.0)
@@ -70,16 +76,24 @@ impl fmt::Display for Slot {
 }
 
 pub trait Var {
+    /// Returns the type of this variable.
     fn var_type(&self) -> Rc<dyn Type>;
+    /// Returns a reference to this variable as a `dyn Any` for downcasting.
     fn as_any(self: Rc<Self>) -> Rc<dyn Any>;
+    /// Returns a reference to this variable as a `dyn Env` if it is an environment.
     fn as_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
         None
     }
 }
 
 pub trait Env {
+    /// Returns the parent environment of this environment, if any.
     fn parent(&self) -> Option<Rc<dyn Env>>;
+    /// Returns a map of all variable names to their corresponding slots in this environment.
+    fn get_slots(&self) -> HashMap<String, Slot>;
+    /// Returns the slot corresponding to the given variable name in this environment, if it exists.
     fn get(&self, name: &str) -> Option<Slot>;
+    /// Sets the slot corresponding to the given variable name in this environment.
     fn set(&self, name: String, value: Slot);
 }
 
@@ -97,6 +111,10 @@ impl CommonEnv {
 impl Env for CommonEnv {
     fn parent(&self) -> Option<Rc<dyn Env>> {
         self.parent.clone()
+    }
+
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.variables.borrow().clone()
     }
 
     fn get(&self, name: &str) -> Option<Slot> {
@@ -169,6 +187,10 @@ impl Env for Object {
         self.env.parent.clone()
     }
 
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.env.get_slots()
+    }
+
     fn get(&self, name: &str) -> Option<Slot> {
         self.env.get(name)
     }
@@ -232,6 +254,10 @@ impl Var for Atom {
 impl Env for Atom {
     fn parent(&self) -> Option<Rc<dyn Env>> {
         self.env.parent.clone()
+    }
+
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.env.get_slots()
     }
 
     fn get(&self, name: &str) -> Option<Slot> {
