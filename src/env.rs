@@ -350,6 +350,13 @@ pub fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
     distribute(push_negations(expr))
 }
 
+/// Resolves a nested variable path starting from the given environment.
+///
+/// The first segment is read from the initial environment and each subsequent
+/// segment is resolved against the environment exposed by the current value.
+/// This supports walking through primitive variables, object references, and
+/// atom references while returning a `RiddleError` if any segment is missing or
+/// the current value is not an environment.
 pub fn get_var_by_path(core: &dyn Core, env: &dyn Env, path: &[String]) -> Result<Slot, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
     rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| match acc {

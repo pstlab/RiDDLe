@@ -12,7 +12,9 @@ use std::{
 };
 
 pub trait Type {
+    /// Returns the simple name of the type.
     fn name(&self) -> &str;
+    /// Returns the fully qualified name of the type, including any parent class names.
     fn full_name(&self) -> String {
         self.name().to_string()
     }
@@ -20,6 +22,7 @@ pub trait Type {
         None
     }
 
+    /// Creates a new instance of the type, returning a [`Slot`] that can be used
     fn new_instance(self: Rc<Self>) -> Slot;
 }
 
@@ -774,6 +777,11 @@ impl Predicate {
 
     /// Executes predicate statements against a concrete atom.
     pub fn call(self: Rc<Self>, atom: Rc<Atom>) -> Result<(), RiddleError> {
+        // we first execute parent predicates in declaration order, passing the same atom..
+        for parent in &self.parents {
+            let parent_predicate = get_predicate_by_path(&self.scope, parent)?;
+            parent_predicate.call(atom.clone())?;
+        }
         let scope: Rc<dyn Scope> = self.clone();
         for stmt in &self.statements {
             execute(&scope, atom.clone(), stmt)?;
