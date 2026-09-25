@@ -1,3 +1,4 @@
+use core::fmt;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -47,6 +48,63 @@ pub(crate) enum Token {
     Goal,
     Or,
     Eof,
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::Identifier(s) => s.fmt(f),
+            Token::BoolLiteral(b) => {
+                if *b {
+                    "true".fmt(f)
+                } else {
+                    "false".fmt(f)
+                }
+            }
+            Token::IntLiteral(s) => s.fmt(f),
+            Token::RealLiteral(s) => s.fmt(f),
+            Token::StringLiteral(s) => write!(f, "\"{}\"", s),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Asterisk => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+            Token::Amp => write!(f, "&"),
+            Token::Bar => write!(f, "|"),
+            Token::Dot => write!(f, "."),
+            Token::LParen => write!(f, "("),
+            Token::RParen => write!(f, ")"),
+            Token::LBracket => write!(f, "["),
+            Token::RBracket => write!(f, "]"),
+            Token::LBrace => write!(f, "{{"),
+            Token::RBrace => write!(f, "}}"),
+            Token::Comma => write!(f, ","),
+            Token::Colon => write!(f, ":"),
+            Token::Equal => write!(f, "="),
+            Token::EqualEqual => write!(f, "=="),
+            Token::Not => write!(f, "!"),
+            Token::NotEqual => write!(f, "!="),
+            Token::LessThan => write!(f, "<"),
+            Token::LessEqual => write!(f, "<="),
+            Token::GreaterThan => write!(f, ">"),
+            Token::GreaterEqual => write!(f, ">="),
+            Token::Semicolon => write!(f, ";"),
+            Token::Bool => write!(f, "bool"),
+            Token::Int => write!(f, "int"),
+            Token::Real => write!(f, "real"),
+            Token::String => write!(f, "string"),
+            Token::Class => write!(f, "class"),
+            Token::Predicate => write!(f, "predicate"),
+            Token::New => write!(f, "new"),
+            Token::For => write!(f, "for"),
+            Token::This => write!(f, "this"),
+            Token::Void => write!(f, "void"),
+            Token::Return => write!(f, "return"),
+            Token::Fact => write!(f, "fact"),
+            Token::Goal => write!(f, "goal"),
+            Token::Or => write!(f, "or"),
+            Token::Eof => write!(f, "<EOF>"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

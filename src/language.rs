@@ -16,6 +16,18 @@ pub struct ProblemDef {
     pub statements: Vec<Statement>,
 }
 
+impl fmt::Display for ProblemDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            [self.functions.iter().map(|f| format!("    {}", f)).collect::<Vec<_>>(), self.predicates.iter().map(|p| format!("    {}", p)).collect::<Vec<_>>(), self.classes.iter().map(|c| format!("    {}", c)).collect::<Vec<_>>(), self.statements.iter().map(|s| format!("    {};", s)).collect::<Vec<_>>(),]
+                .concat()
+                .join("\n")
+        )
+    }
+}
+
 pub type FieldDef = (Vec<String>, Vec<(String, Option<Expr>)>); // (type, [(name, optional initializer)])
 
 pub struct ClassDef {
@@ -28,10 +40,42 @@ pub struct ClassDef {
     pub classes: Vec<ClassDef>,
 }
 
+impl fmt::Display for ClassDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "class {}{} {{\n{}\n}}",
+            self.name,
+            if self.parents.is_empty() { String::new() } else { format!(": {}", self.parents.iter().map(|p| p.join(".")).collect::<Vec<_>>().join(", ")) },
+            [
+                self.fields.iter().map(|(t, fs)| format!("    {} {};", t.join("."), fs.iter().map(|(n, v)| format!("{}{}", n, v.as_ref().map(|v| format!(" = {}", v)).unwrap_or_default())).collect::<Vec<_>>().join(", "))).collect::<Vec<_>>(),
+                self.constructors.iter().map(|c| format!("    {}{}", self.name, c)).collect::<Vec<_>>(),
+                self.functions.iter().map(|f| format!("    {}", f)).collect::<Vec<_>>(),
+                self.predicates.iter().map(|p| format!("    {}", p)).collect::<Vec<_>>(),
+                self.classes.iter().map(|c| format!("    {}", c)).collect::<Vec<_>>(),
+            ]
+            .concat()
+            .join("\n")
+        )
+    }
+}
+
 pub struct ConstructorDef {
     pub args: Vec<(Vec<String>, String)>,
     pub init: Vec<(Vec<String>, Vec<Expr>)>,
     pub statements: Vec<Statement>,
+}
+
+impl fmt::Display for ConstructorDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}) {} {{\n{}\n}}",
+            self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", "),
+            self.init.iter().map(|(t, e)| format!("{}({})", t.join("."), e.iter().map(|e| format!("{}", e)).collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join(", "),
+            self.statements.iter().map(|s| format!("    {};", s)).collect::<Vec<_>>().join("\n")
+        )
+    }
 }
 
 pub struct FunctionDef {
@@ -41,11 +85,37 @@ pub struct FunctionDef {
     pub statements: Vec<Statement>,
 }
 
+impl fmt::Display for FunctionDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {}({}) {{\n{}\n}}",
+            self.return_type.as_ref().map(|t| t.join(".")).unwrap_or_else(|| "void".to_string()),
+            self.name,
+            self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", "),
+            self.statements.iter().map(|s| format!("    {};", s)).collect::<Vec<_>>().join("\n")
+        )
+    }
+}
+
 pub struct PredicateDef {
     pub name: String,
     pub args: Vec<(Vec<String>, String)>,
     pub parents: Vec<Vec<String>>,
     pub statements: Vec<Statement>,
+}
+
+impl fmt::Display for PredicateDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "predicate {}({}) {} {{\n{}\n}}",
+            self.name,
+            self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", "),
+            if self.parents.is_empty() { String::new() } else { format!(": {}", self.parents.iter().map(|p| p.join(".")).collect::<Vec<_>>().join(", ")) },
+            self.statements.iter().map(|s| format!("    {};", s)).collect::<Vec<_>>().join("\n")
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -143,8 +213,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             if let Slot::Primitive(var) = expr.clone()
                 && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
             {
-                scp.core().assert(bool_expr);
-                Ok(())
+                if scp.core().assert(bool_expr) { Ok(()) } else { Err(RiddleError::InconsistencyError("Assertion failed".to_string())) }
             } else {
                 Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", expr)))
             }
