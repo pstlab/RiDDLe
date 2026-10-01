@@ -783,8 +783,9 @@ impl Predicate {
             parent_predicate.call(atom.clone())?;
         }
         let scope: Rc<dyn Scope> = self.clone();
+        let atom_env = Rc::new(CommonEnv::new(Some(atom.clone())));
         for stmt in &self.statements {
-            execute(&scope, atom.clone(), stmt)?;
+            execute(&scope, atom_env.clone(), stmt)?;
         }
         Ok(())
     }
