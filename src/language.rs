@@ -353,7 +353,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                     pred_hierarchy.push_back(parent_predicate);
                 }
             }
-            let atom = scp.core().new_atom(predicate, *is_fact, args);
+            let atom = scp.core().new_atom(predicate, *is_fact, args)?;
             env.set(name.clone(), Slot::AtomRef(atom));
             Ok(())
         }

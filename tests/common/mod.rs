@@ -178,7 +178,7 @@ impl Core for TestCore {
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>> {
         self.core.get_object(id)
     }
-    fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> AtomId {
+    fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Result<AtomId, RiddleError> {
         self.core.new_atom(predicate, fact, args)
     }
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>> {
