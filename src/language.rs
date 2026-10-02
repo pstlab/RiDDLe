@@ -118,6 +118,20 @@ impl fmt::Display for PredicateDef {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum AtomKind {
+    Fact,
+    Goal,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
+pub enum ResolutionConstraint {
+    #[default]
+    None,
+    MustUnify,
+    CannotUnify,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Expr(Expr),
@@ -125,7 +139,7 @@ pub enum Statement {
     Assign { name: Vec<String>, value: Expr },
     ForAll { var_type: Vec<String>, var_name: String, statements: Vec<Statement> },
     Disjunction { disjuncts: Vec<(Vec<Statement>, Expr)> },
-    Formula { is_fact: bool, name: String, tau: Vec<String>, predicate_name: String, args: Vec<(String, Expr)> },
+    Formula { kind: AtomKind, name: String, tau: Vec<String>, predicate_name: String, args: Vec<(String, Expr)>, resolution_constraint: ResolutionConstraint },
     Return { value: Expr },
 }
 
@@ -137,7 +151,23 @@ impl fmt::Display for Statement {
             Statement::Assign { name, value } => write!(f, "{} = {};", name.join("."), value),
             Statement::ForAll { var_type, var_name, statements } => write!(f, "for {} {} {{\n{}\n}}", var_type.join("."), var_name, statements.iter().map(|s| format!("    {}", s)).collect::<Vec<_>>().join("\n")),
             Statement::Disjunction { disjuncts } => write!(f, "{{\n{}\n}}", disjuncts.iter().map(|(s, e)| format!("    {{\n{}\n    }}: {}", s.iter().map(|s| format!("        {}", s)).collect::<Vec<_>>().join("\n"), e)).collect::<Vec<_>>().join(" or ")),
-            Statement::Formula { is_fact, name, tau, predicate_name, args } => write!(f, "{} {} = new {}{}({});", if *is_fact { "fact" } else { "formula" }, name, if tau.is_empty() { String::new() } else { tau.join(".") + "." }, predicate_name, args.iter().map(|(n, e)| format!("{}: {}", n, e)).collect::<Vec<_>>().join(", ")),
+            Statement::Formula { kind, name, tau, predicate_name, args, resolution_constraint } => write!(
+                f,
+                "{} {} = new {}{}({}){};",
+                match kind {
+                    AtomKind::Fact => "fact",
+                    AtomKind::Goal => "goal",
+                },
+                name,
+                if tau.is_empty() { String::new() } else { tau.join(".") + "." },
+                predicate_name,
+                args.iter().map(|(n, e)| format!("{}: {}", n, e)).collect::<Vec<_>>().join(", "),
+                match resolution_constraint {
+                    ResolutionConstraint::None => "",
+                    ResolutionConstraint::MustUnify => "?",
+                    ResolutionConstraint::CannotUnify => "!",
+                }
+            ),
             Statement::Return { value } => write!(f, "return {};", value),
         }
     }
@@ -299,7 +329,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             scp.core().new_disjunction(disjunction);
             Ok(())
         }
-        Statement::Formula { is_fact, name, tau, predicate_name, args } => {
+        Statement::Formula { kind, name, tau, predicate_name, args, resolution_constraint } => {
             let tau = if tau.is_empty() { None } else { Some(get_var_by_path(scp.core().as_ref(), env.as_ref(), tau)?) };
             let predicate = if let Some(tau) = tau.as_ref() {
                 let tau = match tau {
@@ -353,7 +383,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                     pred_hierarchy.push_back(parent_predicate);
                 }
             }
-            let atom = scp.core().new_atom(predicate, *is_fact, args)?;
+            let atom = scp.core().new_atom(predicate, *kind, args, *resolution_constraint)?;
             env.set(name.clone(), Slot::AtomRef(atom));
             Ok(())
         }

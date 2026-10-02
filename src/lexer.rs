@@ -24,9 +24,10 @@ pub(crate) enum Token {
     RBrace,
     Comma,
     Colon,
+    Question,
     Equal,
     EqualEqual,
-    Not,
+    Bang,
     NotEqual,
     LessThan,
     LessEqual,
@@ -79,9 +80,10 @@ impl fmt::Display for Token {
             Token::RBrace => write!(f, "}}"),
             Token::Comma => write!(f, ","),
             Token::Colon => write!(f, ":"),
+            Token::Question => write!(f, "?"),
             Token::Equal => write!(f, "="),
             Token::EqualEqual => write!(f, "=="),
-            Token::Not => write!(f, "!"),
+            Token::Bang => write!(f, "!"),
             Token::NotEqual => write!(f, "!="),
             Token::LessThan => write!(f, "<"),
             Token::LessEqual => write!(f, "<="),
@@ -205,6 +207,10 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     Ok((start_loc, Token::Colon, self.current_loc))
                 }
+                '?' => {
+                    self.advance();
+                    Ok((start_loc, Token::Question, self.current_loc))
+                }
                 '=' => {
                     self.advance();
                     if let Some(&'=') = self.input.peek() {
@@ -220,7 +226,7 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         Ok((start_loc, Token::NotEqual, self.current_loc))
                     } else {
-                        Ok((start_loc, Token::Not, self.current_loc))
+                        Ok((start_loc, Token::Bang, self.current_loc))
                     }
                 }
                 '<' => {
@@ -437,7 +443,7 @@ mod tests {
             Token::Semicolon,
             Token::Equal,
             Token::EqualEqual,
-            Token::Not,
+            Token::Bang,
             Token::NotEqual,
             Token::LessThan,
             Token::LessEqual,

@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
     env::{Atom, AtomId, BoolExpr, CommonEnv, Env, Object, ObjectId, Slot},
-    language::{Disjunction, execute},
+    language::{AtomKind, Disjunction, ResolutionConstraint, execute},
     parse_problem,
     scope::{BoolType, Class, CommonScope, Field, Function, IntType, Predicate, RealType, Scope, StringType, Type, get_predicate_by_path},
 };
@@ -32,7 +32,7 @@ pub trait Core: Scope + Env {
 
     fn new_object(&self, class: Rc<dyn Class>) -> ObjectId;
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>>;
-    fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Result<AtomId, RiddleError>;
+    fn new_atom(&self, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Result<AtomId, RiddleError>;
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>>;
 
     fn bool_type(&self) -> Rc<dyn Type> {
@@ -119,14 +119,14 @@ impl CommonCore {
         self.atoms.borrow().get(*id).cloned()
     }
 
-    pub fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Result<AtomId, RiddleError> {
+    pub fn new_atom(&self, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Result<AtomId, RiddleError> {
         let id = AtomId(self.atoms.borrow().len());
         predicate.atoms.borrow_mut().push(id);
         for parent in predicate.parents() {
             let parent_predicate = get_predicate_by_path(predicate.as_ref(), parent)?;
             parent_predicate.atoms.borrow_mut().push(id);
         }
-        self.atoms.borrow_mut().push(Rc::new(Atom::new(id, predicate, fact, args)));
+        self.atoms.borrow_mut().push(Rc::new(Atom::new(id, predicate, kind, args, resolution_constraint)));
         Ok(id)
     }
 }
@@ -289,8 +289,8 @@ mod tests {
         fn get_object(&self, id: ObjectId) -> Option<Rc<Object>> {
             self.core.get_object(id)
         }
-        fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Result<AtomId, RiddleError> {
-            self.core.new_atom(predicate, fact, args)
+        fn new_atom(&self, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Result<AtomId, RiddleError> {
+            self.core.new_atom(predicate, kind, args, resolution_constraint)
         }
         fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>> {
             self.core.get_atom(id)

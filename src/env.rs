@@ -1,6 +1,7 @@
 use crate::{
     RiddleError,
     core::Core,
+    language::{AtomKind, ResolutionConstraint},
     scope::{Class, Predicate, Scope, Type},
 };
 use core::fmt;
@@ -203,12 +204,13 @@ impl Env for Object {
 pub struct Atom {
     id: AtomId,
     predicate: Weak<Predicate>,
-    fact: bool,
+    kind: AtomKind,
     env: CommonEnv,
+    resolution_constraint: ResolutionConstraint,
 }
 
 impl Atom {
-    pub fn new(id: AtomId, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Self {
+    pub fn new(id: AtomId, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Self {
         // Determine the environment for this atom based on the "tau" argument, if present.
         let env = match args.get("tau") {
             Some(tau) => match tau {
@@ -223,7 +225,7 @@ impl Atom {
         for (name, value) in args {
             env.set(name, value);
         }
-        Self { id, predicate: Rc::downgrade(&predicate), fact, env }
+        Self { id, predicate: Rc::downgrade(&predicate), kind, env, resolution_constraint }
     }
 
     pub fn id(&self) -> AtomId {
@@ -234,8 +236,12 @@ impl Atom {
         self.predicate.upgrade().unwrap()
     }
 
-    pub fn is_fact(&self) -> bool {
-        self.fact
+    pub fn kind(&self) -> AtomKind {
+        self.kind
+    }
+
+    pub fn resolution_constraint(&self) -> ResolutionConstraint {
+        self.resolution_constraint
     }
 }
 

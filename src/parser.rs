@@ -1,6 +1,6 @@
 use crate::{
     RiddleError,
-    language::{ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, Statement},
+    language::{AtomKind, ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, ResolutionConstraint, Statement},
     lexer::{Lexer, LexerError, Location, Token},
 };
 use std::{collections::VecDeque, iter::Peekable};
@@ -650,8 +650,24 @@ impl<'a> Parser<'a> {
                     }
                 }
                 self.expect(Token::RParen)?;
+                let resolution_constraint = if let Ok(Some((_, Token::Bang, _))) = self.peek(0) {
+                    self.expect(Token::Bang)?; // consume '!'
+                    ResolutionConstraint::CannotUnify
+                } else if let Ok(Some((_, Token::Question, _))) = self.peek(0) {
+                    self.expect(Token::Question)?; // consume '?'
+                    ResolutionConstraint::MustUnify
+                } else {
+                    ResolutionConstraint::None
+                };
                 self.expect(Token::Semicolon)?;
-                Ok(Statement::Formula { is_fact, name, tau: tau.to_vec(), predicate_name: predicate_name.to_string(), args })
+                Ok(Statement::Formula {
+                    kind: if is_fact { AtomKind::Fact } else { AtomKind::Goal },
+                    name,
+                    tau: tau.to_vec(),
+                    predicate_name: predicate_name.to_string(),
+                    args,
+                    resolution_constraint,
+                })
             }
             _ => {
                 let expr = self.parse_expression()?;
@@ -768,7 +784,7 @@ impl<'a> Parser<'a> {
 
     fn parse_primary_expression(&mut self) -> Result<Expr, RiddleError> {
         match self.next() {
-            Ok(Some((_, Token::Not, _))) => Ok(Expr::Not { term: Box::new(self.parse_primary_expression()?) }),
+            Ok(Some((_, Token::Bang, _))) => Ok(Expr::Not { term: Box::new(self.parse_primary_expression()?) }),
             Ok(Some((_, Token::BoolLiteral(value), _))) => Ok(Expr::Bool(value)),
             Ok(Some((_, Token::IntLiteral(value), _))) => Ok(Expr::Int(value)),
             Ok(Some((_, Token::RealLiteral(value), _))) => {
@@ -1215,8 +1231,8 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let statement = parser.parse_statement().expect("Failed to parse formula");
-        if let Statement::Formula { is_fact, name, tau, predicate_name, args } = statement {
-            assert!(is_fact);
+        if let Statement::Formula { kind, name, tau, predicate_name, args, resolution_constraint } = statement {
+            assert!(matches!(kind, AtomKind::Fact));
             assert_eq!(name, "isEven");
             assert_eq!(tau, vec![] as Vec<String>);
             assert_eq!(predicate_name, "Even");
@@ -1229,6 +1245,7 @@ mod tests {
             } else {
                 panic!("Expected multiplication expression in formula argument");
             }
+            assert!(matches!(resolution_constraint, ResolutionConstraint::None));
         } else {
             panic!("Expected formula statement");
         }

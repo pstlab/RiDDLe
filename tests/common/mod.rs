@@ -5,7 +5,7 @@ use riddle::{
     RiddleError,
     core::{CommonCore, Core},
     env::{Atom, AtomId, BoolExpr, Env, Object, ObjectId, Slot, Var},
-    language::Disjunction,
+    language::{AtomKind, Disjunction, ResolutionConstraint},
     scope::{Class, Field, Function, Predicate, Scope, Type, arith_type, get_type_by_path},
 };
 use std::{
@@ -178,8 +178,8 @@ impl Core for TestCore {
     fn get_object(&self, id: ObjectId) -> Option<Rc<Object>> {
         self.core.get_object(id)
     }
-    fn new_atom(&self, predicate: Rc<Predicate>, fact: bool, args: HashMap<String, Slot>) -> Result<AtomId, RiddleError> {
-        self.core.new_atom(predicate, fact, args)
+    fn new_atom(&self, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Result<AtomId, RiddleError> {
+        self.core.new_atom(predicate, kind, args, resolution_constraint)
     }
     fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>> {
         self.core.get_atom(id)
