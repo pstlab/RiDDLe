@@ -320,7 +320,7 @@ impl Constructor {
         let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *object)))?.as_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
         // the context in which the constructor is invoked..
         let constructor_env = Rc::new(CommonEnv::new(Some(obj_env.clone())));
-        constructor_env.set("this".to_string(), Slot::ObjectRef(object));
+        constructor_env.set(String::from("this"), Slot::ObjectRef(object));
         for ((arg_type, arg_name), arg_value) in self.args.iter().zip(args) {
             let expected_type = get_type_by_path(self.scope.as_ref(), arg_type)?;
             let arg_value_type = match &arg_value {
@@ -427,7 +427,7 @@ impl Scope for Constructor {
 
 impl fmt::Display for Constructor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let class_name = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).map(|c| c.full_name()).unwrap_or_else(|| "<unknown class>".to_string());
+        let class_name = self.scope.scope.as_ref().and_then(|s| s.upgrade()).and_then(|s| s.as_class()).map(|c| c.full_name()).unwrap_or_else(|| String::from("<unknown class>"));
         let args = self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", ");
         write!(f, "{}({})", class_name, args)
     }

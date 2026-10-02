@@ -134,10 +134,10 @@ impl<'a> Parser<'a> {
                             functions.push(self.parse_function()?);
                         } else {
                             let field_type = match self.next() {
-                                Ok(Some((_, Token::Bool, _))) => vec!["bool".to_string()],
-                                Ok(Some((_, Token::Int, _))) => vec!["int".to_string()],
-                                Ok(Some((_, Token::Real, _))) => vec!["real".to_string()],
-                                Ok(Some((_, Token::String, _))) => vec!["string".to_string()],
+                                Ok(Some((_, Token::Bool, _))) => vec![String::from(String::from("bool"))],
+                                Ok(Some((_, Token::Int, _))) => vec![String::from(String::from("int"))],
+                                Ok(Some((_, Token::Real, _))) => vec![String::from(String::from("real"))],
+                                Ok(Some((_, Token::String, _))) => vec![String::from(String::from("string"))],
                                 Ok(Some((_, Token::Identifier(name), _))) => {
                                     let mut ids = vec![name];
                                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -145,18 +145,18 @@ impl<'a> Parser<'a> {
                                         if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                                             ids.push(next_name);
                                         } else {
-                                            return Err(RiddleError::RuntimeError("Expected identifier after '.' in type".to_string()));
+                                            return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in type")));
                                         }
                                     }
                                     ids
                                 }
                                 Ok(Some(token)) => return Err(RiddleError::RuntimeError(format!("Unexpected token in type: {:?}", token))),
-                                Ok(None) => return Err(RiddleError::RuntimeError("Unexpected end of input while parsing type".to_string())),
+                                Ok(None) => return Err(RiddleError::RuntimeError(String::from("Unexpected end of input while parsing type"))),
                                 Err(e) => return Err(RiddleError::RuntimeError(format!("Lexer Error: {:?}", e))),
                             };
                             let field_name = match self.next() {
                                 Ok(Some((_, Token::Identifier(name), _))) => name,
-                                _ => return Err(RiddleError::RuntimeError("Expected field name".to_string())),
+                                _ => return Err(RiddleError::RuntimeError(String::from("Expected field name"))),
                             };
                             let init_expr = if let Ok(Some((_, Token::Equal, _))) = self.peek(0) {
                                 self.expect(Token::Equal)?; // consume '='
@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
                                 self.expect(Token::Comma)?; // consume ','
                                 let field_name = match self.next() {
                                     Ok(Some((_, Token::Identifier(name), _))) => name,
-                                    _ => return Err(RiddleError::RuntimeError("Expected field name".to_string())),
+                                    _ => return Err(RiddleError::RuntimeError(String::from("Expected field name"))),
                                 };
                                 let init_expr = if let Ok(Some((_, Token::Equal, _))) = self.peek(0) {
                                     self.expect(Token::Equal)?; // consume '='
@@ -193,16 +193,16 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_constructor(&mut self) -> Result<ConstructorDef, RiddleError> {
         let _ = match self.next() {
             Ok(Some((_, Token::Identifier(name), _))) => name,
-            _ => return Err(RiddleError::RuntimeError("Expected constructor name".to_string())),
+            _ => return Err(RiddleError::RuntimeError(String::from("Expected constructor name"))),
         };
         self.expect(Token::LParen)?;
         let mut args = Vec::new();
         while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
             let arg_type = match self.next() {
-                Ok(Some((_, Token::Bool, _))) => Ok(vec!["bool".to_string()]),
-                Ok(Some((_, Token::Int, _))) => Ok(vec!["int".to_string()]),
-                Ok(Some((_, Token::Real, _))) => Ok(vec!["real".to_string()]),
-                Ok(Some((_, Token::String, _))) => Ok(vec!["string".to_string()]),
+                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from(String::from("bool"))]),
+                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from(String::from("int"))]),
+                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from(String::from("real"))]),
+                Ok(Some((_, Token::String, _))) => Ok(vec![String::from(String::from("string"))]),
                 Ok(Some((_, Token::Identifier(name), _))) => {
                     let mut ids = vec![name];
                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -210,18 +210,18 @@ impl<'a> Parser<'a> {
                         if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                             ids.push(next_name);
                         } else {
-                            return Err(RiddleError::RuntimeError("Expected identifier after '.' in type".to_string()));
+                            return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in type")));
                         }
                     }
                     Ok(ids)
                 }
                 Ok(Some(token)) => Err(RiddleError::RuntimeError(format!("Unexpected token in type: {:?}", token))),
-                Ok(None) => Err(RiddleError::RuntimeError("Unexpected end of input while parsing type".to_string())),
+                Ok(None) => Err(RiddleError::RuntimeError(String::from("Unexpected end of input while parsing type"))),
                 Err(e) => Err(RiddleError::RuntimeError(format!("Lexer Error: {:?}", e))),
             }?;
             let arg_name = match self.next() {
                 Ok(Some((_, Token::Identifier(name), _))) => name,
-                _ => return Err(RiddleError::RuntimeError("Expected identifier in constructor arguments".to_string())),
+                _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier in constructor arguments"))),
             };
             args.push((arg_type, arg_name));
             if let Ok(Some((_, Token::Comma, _))) = self.peek(0) {
@@ -243,13 +243,13 @@ impl<'a> Parser<'a> {
                             if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                                 ids.push(next_name);
                             } else {
-                                return Err(RiddleError::RuntimeError("Expected identifier after '.' in constructor initialization".to_string()));
+                                return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in constructor initialization")));
                             }
                         }
                         Ok(ids)
                     }
                     Ok(Some(token)) => Err(RiddleError::RuntimeError(format!("Unexpected token in constructor initialization: {:?}", token))),
-                    Ok(None) => Err(RiddleError::RuntimeError("Unexpected end of input while parsing constructor initialization".to_string())),
+                    Ok(None) => Err(RiddleError::RuntimeError(String::from("Unexpected end of input while parsing constructor initialization"))),
                     Err(e) => Err(RiddleError::RuntimeError(format!("Lexer Error: {:?}", e))),
                 }?;
                 self.expect(Token::LParen)?;
@@ -284,10 +284,10 @@ impl<'a> Parser<'a> {
         let return_type = match self.peek(0) {
             Ok(Some((_, Token::Bool, _))) | Ok(Some((_, Token::Int, _))) | Ok(Some((_, Token::Real, _))) | Ok(Some((_, Token::String, _))) | Ok(Some((_, Token::Identifier(_), _))) => {
                 let return_type = match self.next().unwrap() {
-                    Some((_, Token::Bool, _)) => vec!["bool".to_string()],
-                    Some((_, Token::Int, _)) => vec!["int".to_string()],
-                    Some((_, Token::Real, _)) => vec!["real".to_string()],
-                    Some((_, Token::String, _)) => vec!["string".to_string()],
+                    Some((_, Token::Bool, _)) => vec![String::from(String::from("bool"))],
+                    Some((_, Token::Int, _)) => vec![String::from(String::from("int"))],
+                    Some((_, Token::Real, _)) => vec![String::from(String::from("real"))],
+                    Some((_, Token::String, _)) => vec![String::from(String::from("string"))],
                     Some((_, Token::Identifier(name), _)) => {
                         let mut ids = vec![name];
                         while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -295,7 +295,7 @@ impl<'a> Parser<'a> {
                             if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                                 ids.push(next_name);
                             } else {
-                                return Err(RiddleError::RuntimeError("Expected identifier after '.' in return type".to_string()));
+                                return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in return type")));
                             }
                         }
                         ids
@@ -308,20 +308,20 @@ impl<'a> Parser<'a> {
                 self.expect(Token::Void)?; // consume 'void'
                 None
             }
-            _ => return Err(RiddleError::RuntimeError("Expected return type or 'void'".to_string())),
+            _ => return Err(RiddleError::RuntimeError(String::from("Expected return type or 'void'"))),
         };
         let name = match self.next() {
             Ok(Some((_, Token::Identifier(name), _))) => name,
-            _ => return Err(RiddleError::RuntimeError("Expected function name".to_string())),
+            _ => return Err(RiddleError::RuntimeError(String::from("Expected function name"))),
         };
         self.expect(Token::LParen)?;
         let mut args = Vec::new();
         while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
             let arg_type = match self.next() {
-                Ok(Some((_, Token::Bool, _))) => Ok(vec!["bool".to_string()]),
-                Ok(Some((_, Token::Int, _))) => Ok(vec!["int".to_string()]),
-                Ok(Some((_, Token::Real, _))) => Ok(vec!["real".to_string()]),
-                Ok(Some((_, Token::String, _))) => Ok(vec!["string".to_string()]),
+                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from(String::from("bool"))]),
+                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from(String::from("int"))]),
+                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from(String::from("real"))]),
+                Ok(Some((_, Token::String, _))) => Ok(vec![String::from(String::from("string"))]),
                 Ok(Some((_, Token::Identifier(name), _))) => {
                     let mut ids = vec![name];
                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -329,18 +329,18 @@ impl<'a> Parser<'a> {
                         if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                             ids.push(next_name);
                         } else {
-                            return Err(RiddleError::RuntimeError("Expected identifier after '.' in type".to_string()));
+                            return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in type")));
                         }
                     }
                     Ok(ids)
                 }
                 Ok(Some((start, token, _))) => Err(RiddleError::RuntimeError(format!("Unexpected token in type: {:?} at line {}, column {}", token, start.line, start.column))),
-                Ok(None) => Err(RiddleError::RuntimeError("Unexpected end of input while parsing type".to_string())),
+                Ok(None) => Err(RiddleError::RuntimeError(String::from("Unexpected end of input while parsing type"))),
                 Err(e) => Err(RiddleError::RuntimeError(format!("Lexer Error: {:?}", e))),
             }?;
             let arg_name = match self.next() {
                 Ok(Some((_, Token::Identifier(name), _))) => name,
-                _ => return Err(RiddleError::RuntimeError("Expected identifier in function arguments".to_string())),
+                _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier in function arguments"))),
             };
             args.push((arg_type, arg_name));
             if let Ok(Some((_, Token::Comma, _))) = self.peek(0) {
@@ -363,16 +363,16 @@ impl<'a> Parser<'a> {
         self.expect(Token::Predicate)?;
         let name = match self.next() {
             Ok(Some((_, Token::Identifier(name), _))) => name,
-            _ => return Err(RiddleError::RuntimeError("Expected identifier after 'predicate'".to_string())),
+            _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier after 'predicate'"))),
         };
         self.expect(Token::LParen)?;
         let mut args = Vec::new();
         while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
             let arg_type = match self.next() {
-                Ok(Some((_, Token::Bool, _))) => Ok(vec!["bool".to_string()]),
-                Ok(Some((_, Token::Int, _))) => Ok(vec!["int".to_string()]),
-                Ok(Some((_, Token::Real, _))) => Ok(vec!["real".to_string()]),
-                Ok(Some((_, Token::String, _))) => Ok(vec!["string".to_string()]),
+                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from(String::from("bool"))]),
+                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from(String::from("int"))]),
+                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from(String::from("real"))]),
+                Ok(Some((_, Token::String, _))) => Ok(vec![String::from(String::from("string"))]),
                 Ok(Some((_, Token::Identifier(name), _))) => {
                     let mut ids = vec![name];
                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -380,18 +380,18 @@ impl<'a> Parser<'a> {
                         if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                             ids.push(next_name);
                         } else {
-                            return Err(RiddleError::RuntimeError("Expected identifier after '.' in type".to_string()));
+                            return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in type")));
                         }
                     }
                     Ok(ids)
                 }
                 Ok(Some((start, token, _))) => Err(RiddleError::RuntimeError(format!("Unexpected token in type: {:?} at line {}, column {}", token, start.line, start.column))),
-                Ok(None) => Err(RiddleError::RuntimeError("Unexpected end of input while parsing type".to_string())),
+                Ok(None) => Err(RiddleError::RuntimeError(String::from("Unexpected end of input while parsing type"))),
                 Err(e) => Err(RiddleError::RuntimeError(format!("Lexer Error: {:?}", e))),
             }?;
             let arg_name = match self.next() {
                 Ok(Some((_, Token::Identifier(name), _))) => name,
-                _ => return Err(RiddleError::RuntimeError("Expected identifier in predicate arguments".to_string())),
+                _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier in predicate arguments"))),
             };
             args.push((arg_type, arg_name));
             if let Ok(Some((_, Token::Comma, _))) = self.peek(0) {
@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
             loop {
                 let parent_name = match self.next() {
                     Ok(Some((_, Token::Identifier(name), _))) => name,
-                    _ => return Err(RiddleError::RuntimeError("Expected parent predicate name".to_string())),
+                    _ => return Err(RiddleError::RuntimeError(String::from("Expected parent predicate name"))),
                 };
                 let mut ids = vec![parent_name];
                 while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -415,7 +415,7 @@ impl<'a> Parser<'a> {
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                         ids.push(next_name);
                     } else {
-                        return Err(RiddleError::RuntimeError("Expected identifier after '.' in parent predicate name".to_string()));
+                        return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.' in parent predicate name")));
                     }
                 }
                 parents.push(ids);
@@ -439,10 +439,10 @@ impl<'a> Parser<'a> {
         match self.peek(0) {
             Ok(Some((_, Token::Bool, _))) | Ok(Some((_, Token::Int, _))) | Ok(Some((_, Token::Real, _))) | Ok(Some((_, Token::String, _))) => {
                 let field_type = match self.next().unwrap() {
-                    Some((_, Token::Bool, _)) => vec!["bool".to_string()],
-                    Some((_, Token::Int, _)) => vec!["int".to_string()],
-                    Some((_, Token::Real, _)) => vec!["real".to_string()],
-                    Some((_, Token::String, _)) => vec!["string".to_string()],
+                    Some((_, Token::Bool, _)) => vec![String::from(String::from("bool"))],
+                    Some((_, Token::Int, _)) => vec![String::from(String::from("int"))],
+                    Some((_, Token::Real, _)) => vec![String::from(String::from("real"))],
+                    Some((_, Token::String, _)) => vec![String::from(String::from("string"))],
                     _ => unreachable!(),
                 };
                 let name = match self.next() {
@@ -487,14 +487,14 @@ impl<'a> Parser<'a> {
                     Ok(Some((_, Token::Equal, _))) => {
                         let mut ids = match self.next() {
                             Ok(Some((_, Token::Identifier(name), _))) => vec![name],
-                            _ => return Err(RiddleError::RuntimeError("Expected identifier".to_string())),
+                            _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier"))),
                         };
                         while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                             self.expect(Token::Dot)?; // consume '.'
                             if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                                 ids.push(next_name);
                             } else {
-                                return Err(RiddleError::RuntimeError("Expected identifier after '.'".to_string()));
+                                return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.'")));
                             }
                         }
                         self.expect(Token::Equal)?; // consume '='
@@ -505,19 +505,19 @@ impl<'a> Parser<'a> {
                     Ok(Some((_, Token::Identifier(_), _))) => {
                         let mut ids = match self.next() {
                             Ok(Some((_, Token::Identifier(name), _))) => vec![name],
-                            _ => return Err(RiddleError::RuntimeError("Expected identifier".to_string())),
+                            _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier"))),
                         };
                         while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                             self.expect(Token::Dot)?; // consume '.'
                             if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                                 ids.push(next_name);
                             } else {
-                                return Err(RiddleError::RuntimeError("Expected identifier after '.'".to_string()));
+                                return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.'")));
                             }
                         }
                         let name = match self.next() {
                             Ok(Some((_, Token::Identifier(name), _))) => name,
-                            _ => return Err(RiddleError::RuntimeError("Expected variable name".to_string())),
+                            _ => return Err(RiddleError::RuntimeError(String::from("Expected variable name"))),
                         };
                         let init_expr = if let Ok(Some((_, Token::Equal, _))) = self.peek(0) {
                             self.expect(Token::Equal)?; // consume '='
@@ -530,7 +530,7 @@ impl<'a> Parser<'a> {
                             self.expect(Token::Comma)?; // consume ','
                             let name = match self.next() {
                                 Ok(Some((_, Token::Identifier(name), _))) => name,
-                                _ => return Err(RiddleError::RuntimeError("Expected variable name".to_string())),
+                                _ => return Err(RiddleError::RuntimeError(String::from("Expected variable name"))),
                             };
                             let init_expr = if let Ok(Some((_, Token::Equal, _))) = self.peek(0) {
                                 self.expect(Token::Equal)?; // consume '='
@@ -583,19 +583,19 @@ impl<'a> Parser<'a> {
                 self.expect(Token::LParen)?;
                 let mut var_type = match self.next() {
                     Ok(Some((_, Token::Identifier(name), _))) => vec![name],
-                    _ => return Err(RiddleError::RuntimeError("Expected identifier".to_string())),
+                    _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier"))),
                 };
                 while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                     self.expect(Token::Dot)?; // consume '.'
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                         var_type.push(next_name);
                     } else {
-                        return Err(RiddleError::RuntimeError("Expected identifier after '.'".to_string()));
+                        return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.'")));
                     }
                 }
                 let var_name = match self.next() {
                     Ok(Some((_, Token::Identifier(name), _))) => name,
-                    _ => return Err(RiddleError::RuntimeError("Expected variable name in for loop".to_string())),
+                    _ => return Err(RiddleError::RuntimeError(String::from("Expected variable name in for loop"))),
                 };
                 self.expect(Token::RParen)?;
                 self.expect(Token::LBrace)?;
@@ -616,29 +616,29 @@ impl<'a> Parser<'a> {
                 let is_fact = matches!(self.next(), Ok(Some((_, Token::Fact, _)))); // consume 'fact' or 'goal'
                 let name = match self.next() {
                     Ok(Some((_, Token::Identifier(name), _))) => name,
-                    _ => return Err(RiddleError::RuntimeError("Expected identifier after 'fact' or 'goal'".to_string())),
+                    _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier after 'fact' or 'goal'"))),
                 };
                 self.expect(Token::Equal)?;
                 self.expect(Token::New)?; // consume 'new'
                 let mut predicate_name = match self.next() {
                     Ok(Some((_, Token::Identifier(name), _))) => vec![name],
-                    _ => return Err(RiddleError::RuntimeError("Expected identifier after 'new'".to_string())),
+                    _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier after 'new'"))),
                 };
                 while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                     self.expect(Token::Dot)?; // consume '.'
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                         predicate_name.push(next_name);
                     } else {
-                        return Err(RiddleError::TypeError("Expected identifier after '.'".to_string()));
+                        return Err(RiddleError::TypeError(String::from("Expected identifier after '.'")));
                     }
                 }
-                let (predicate_name, tau) = predicate_name.split_last().ok_or(RiddleError::RuntimeError("Predicate name cannot be empty".to_string()))?;
+                let (predicate_name, tau) = predicate_name.split_last().ok_or(RiddleError::RuntimeError(String::from("Predicate name cannot be empty")))?;
                 self.expect(Token::LParen)?;
                 let mut args = Vec::new();
                 while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
                     let arg_name = match self.next() {
                         Ok(Some((_, Token::Identifier(name), _))) => name,
-                        _ => return Err(RiddleError::RuntimeError("Expected identifier in formula arguments".to_string())),
+                        _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier in formula arguments"))),
                     };
                     self.expect(Token::Colon)?;
                     let arg_expr = self.parse_expression()?;
@@ -787,7 +787,7 @@ impl<'a> Parser<'a> {
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                         ids.push(next_name);
                     } else {
-                        return Err(RiddleError::RuntimeError("Expected identifier after '.'".to_string()));
+                        return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.'")));
                     }
                 }
                 if let Ok(Some((_, Token::LParen, _))) = self.peek(0) {
@@ -808,13 +808,13 @@ impl<'a> Parser<'a> {
                 }
             }
             Ok(Some((_, Token::This, _))) => {
-                let mut ids = vec!["this".to_string()];
+                let mut ids = vec![String::from(String::from("this"))];
                 while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                     self.expect(Token::Dot)?; // consume '.'
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                         ids.push(next_name);
                     } else {
-                        return Err(RiddleError::RuntimeError("Expected identifier after '.'".to_string()));
+                        return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.'")));
                     }
                 }
                 if let Ok(Some((_, Token::LParen, _))) = self.peek(0) {
@@ -842,14 +842,14 @@ impl<'a> Parser<'a> {
             Ok(Some((_, Token::New, _))) => {
                 let mut class_name = match self.next() {
                     Ok(Some((_, Token::Identifier(name), _))) => vec![name],
-                    _ => return Err(RiddleError::RuntimeError("Expected identifier after 'new'".to_string())),
+                    _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier after 'new'"))),
                 };
                 while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                     self.expect(Token::Dot)?; // consume '.'
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
                         class_name.push(next_name);
                     } else {
-                        return Err(RiddleError::RuntimeError("Expected identifier after '.'".to_string()));
+                        return Err(RiddleError::RuntimeError(String::from("Expected identifier after '.'")));
                     }
                 }
                 self.expect(Token::LParen)?;
@@ -866,8 +866,8 @@ impl<'a> Parser<'a> {
                 Ok(Expr::NewObject { class_name, args })
             }
             Ok(Some((_, token, _))) => Err(RiddleError::RuntimeError(format!("Unexpected token: {:?}", token))),
-            Ok(None) => Err(RiddleError::RuntimeError("Unexpected end of input".to_string())),
-            Err(_) => Err(RiddleError::RuntimeError("Unexpected end of input".to_string())),
+            Ok(None) => Err(RiddleError::RuntimeError(String::from("Unexpected end of input"))),
+            Err(_) => Err(RiddleError::RuntimeError(String::from("Unexpected end of input"))),
         }
     }
 }
@@ -928,27 +928,27 @@ mod tests {
         assert_eq!(program.classes[0].name, "Point");
         assert!(program.classes[0].parents.is_empty());
         assert_eq!(program.classes[0].fields.len(), 1);
-        assert_eq!(program.classes[0].fields[0].0, vec!["int".to_string()]);
+        assert_eq!(program.classes[0].fields[0].0, vec![String::from("int")]);
         assert_eq!(program.classes[0].fields[0].1.len(), 2);
-        assert_eq!(program.classes[0].fields[0].1[0].0, "x".to_string());
-        assert_eq!(program.classes[0].fields[0].1[1].0, "y".to_string());
+        assert_eq!(program.classes[0].fields[0].1[0].0, "x");
+        assert_eq!(program.classes[0].fields[0].1[1].0, "y");
         assert_eq!(program.classes[0].constructors.len(), 1);
-        assert_eq!(program.classes[0].constructors[0].args, vec![(vec!["int".to_string()], "x".to_string()), (vec!["int".to_string()], "y".to_string())]);
-        assert_eq!(program.classes[0].constructors[0].init, vec![(vec!["distance".to_string()], vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }])]);
+        assert_eq!(program.classes[0].constructors[0].args, vec![(vec![String::from("int")], String::from("x")), (vec![String::from("int")], String::from("y"))]);
+        assert_eq!(program.classes[0].constructors[0].init, vec![(vec![String::from("distance")], vec![Expr::QualifiedId { ids: vec![String::from("x")] }, Expr::QualifiedId { ids: vec![String::from("y")] }])]);
         assert_eq!(program.classes[0].constructors[0].statements.len(), 1);
         if let Statement::Assign { name, value } = &program.classes[0].constructors[0].statements[0] {
-            assert_eq!(name, &vec!["distance".to_string()]);
+            assert_eq!(name, &vec![String::from("distance")]);
             assert_eq!(
                 *value,
                 Expr::Function {
-                    name: vec!["sqrt".to_string()],
+                    name: vec![String::from("sqrt")],
                     args: vec![Expr::Sum {
                         terms: vec![
                             Expr::Mul {
-                                factors: vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["x".to_string()] }]
+                                factors: vec![Expr::QualifiedId { ids: vec![String::from("x")] }, Expr::QualifiedId { ids: vec![String::from("x")] }]
                             },
                             Expr::Mul {
-                                factors: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }]
+                                factors: vec![Expr::QualifiedId { ids: vec![String::from("y")] }, Expr::QualifiedId { ids: vec![String::from("y")] }]
                             },
                         ]
                     }]
@@ -979,19 +979,19 @@ mod tests {
         assert_eq!(class.name, "Point");
         assert!(class.parents.is_empty());
         assert_eq!(class.fields.len(), 1);
-        assert_eq!(class.fields[0].0, vec!["int".to_string()]);
+        assert_eq!(class.fields[0].0, vec![String::from("int")]);
         assert_eq!(class.fields[0].1.len(), 2);
-        assert_eq!(class.fields[0].1[0].0, "x".to_string());
-        assert_eq!(class.fields[0].1[1].0, "y".to_string());
+        assert_eq!(class.fields[0].1[0].0, "x");
+        assert_eq!(class.fields[0].1[1].0, "y");
         assert_eq!(class.constructors.len(), 0);
         assert_eq!(class.functions.len(), 1);
         assert_eq!(class.functions[0].return_type, None);
         assert_eq!(class.functions[0].name, "move");
         assert_eq!(class.functions[0].args.len(), 2);
-        assert_eq!(class.functions[0].args[0].0, vec!["int".to_string()]);
-        assert_eq!(class.functions[0].args[0].1, "dx".to_string());
-        assert_eq!(class.functions[0].args[1].0, vec!["int".to_string()]);
-        assert_eq!(class.functions[0].args[1].1, "dy".to_string());
+        assert_eq!(class.functions[0].args[0].0, vec![String::from("int")]);
+        assert_eq!(class.functions[0].args[0].1, "dx");
+        assert_eq!(class.functions[0].args[1].0, vec![String::from("int")]);
+        assert_eq!(class.functions[0].args[1].1, "dy");
         assert_eq!(class.predicates.len(), 1);
         assert_eq!(class.predicates[0].name, "isOrigin");
         assert_eq!(class.predicates[0].args.len(), 0);
@@ -999,14 +999,14 @@ mod tests {
         if let Statement::Expr(Expr::And { terms }) = &class.predicates[0].statements[0] {
             assert_eq!(terms.len(), 2);
             if let Expr::Eq { left, right } = &terms[0] {
-                assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::Int("0".to_string()));
+                assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("x")] });
+                assert_eq!(**right, Expr::Int(String::from("0")));
             } else {
                 panic!("Expected equality expression in predicate body");
             }
             if let Expr::Eq { left, right } = &terms[1] {
-                assert_eq!(**left, Expr::QualifiedId { ids: vec!["y".to_string()] });
-                assert_eq!(**right, Expr::Int("0".to_string()));
+                assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("y")] });
+                assert_eq!(**right, Expr::Int(String::from("0")));
             } else {
                 panic!("Expected equality expression in predicate body");
             }
@@ -1023,22 +1023,22 @@ mod tests {
             }
         "#;
         let constructor = parse_constructor(input).expect("Failed to parse constructor");
-        assert_eq!(constructor.args, vec![(vec!["int".to_string()], "x".to_string()), (vec!["int".to_string()], "y".to_string())]);
-        assert_eq!(constructor.init, vec![(vec!["distance".to_string()], vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }])]);
+        assert_eq!(constructor.args, vec![(vec![String::from("int")], String::from("x")), (vec![String::from("int")], String::from("y"))]);
+        assert_eq!(constructor.init, vec![(vec![String::from("distance")], vec![Expr::QualifiedId { ids: vec![String::from("x")] }, Expr::QualifiedId { ids: vec![String::from("y")] }])]);
         assert_eq!(constructor.statements.len(), 1);
         if let Statement::Assign { name, value } = &constructor.statements[0] {
-            assert_eq!(name, &vec!["distance".to_string()]);
+            assert_eq!(name, &vec![String::from("distance")]);
             assert_eq!(
                 *value,
                 Expr::Function {
-                    name: vec!["sqrt".to_string()],
+                    name: vec![String::from("sqrt")],
                     args: vec![Expr::Sum {
                         terms: vec![
                             Expr::Mul {
-                                factors: vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["x".to_string()] }]
+                                factors: vec![Expr::QualifiedId { ids: vec![String::from("x")] }, Expr::QualifiedId { ids: vec![String::from("x")] }]
                             },
                             Expr::Mul {
-                                factors: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::QualifiedId { ids: vec!["y".to_string()] }]
+                                factors: vec![Expr::QualifiedId { ids: vec![String::from("y")] }, Expr::QualifiedId { ids: vec![String::from("y")] }]
                             },
                         ]
                     }]
@@ -1060,25 +1060,25 @@ mod tests {
         let function = parse_function(input).expect("Failed to parse function");
         assert_eq!(function.return_type, None);
         assert_eq!(function.name, "move");
-        assert_eq!(function.args, vec![(vec!["int".to_string()], "dx".to_string()), (vec!["int".to_string()], "dy".to_string())]);
+        assert_eq!(function.args, vec![(vec![String::from("int")], String::from("dx")), (vec![String::from("int")], String::from("dy"))]);
         assert_eq!(function.statements.len(), 2);
         if let Statement::Assign { name, value } = &function.statements[0] {
-            assert_eq!(name, &vec!["x".to_string()]);
+            assert_eq!(name, &vec![String::from("x")]);
             assert_eq!(
                 value,
                 &Expr::Sum {
-                    terms: vec![Expr::QualifiedId { ids: vec!["x".to_string()] }, Expr::QualifiedId { ids: vec!["dx".to_string()] }]
+                    terms: vec![Expr::QualifiedId { ids: vec![String::from("x")] }, Expr::QualifiedId { ids: vec![String::from("dx")] }]
                 }
             );
         } else {
             panic!("Expected assignment statement in function body");
         }
         if let Statement::Assign { name, value } = &function.statements[1] {
-            assert_eq!(name, &vec!["y".to_string()]);
+            assert_eq!(name, &vec![String::from("y")]);
             assert_eq!(
                 value,
                 &Expr::Sum {
-                    terms: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::QualifiedId { ids: vec!["dy".to_string()] }]
+                    terms: vec![Expr::QualifiedId { ids: vec![String::from("y")] }, Expr::QualifiedId { ids: vec![String::from("dy")] }]
                 }
             );
         } else {
@@ -1094,15 +1094,15 @@ mod tests {
                 }
             "#;
         let function = parse_function(input).expect("Failed to parse function");
-        assert_eq!(function.return_type, Some(vec!["int".to_string()]));
+        assert_eq!(function.return_type, Some(vec![String::from("int")]));
         assert_eq!(function.name, "add");
-        assert_eq!(function.args, vec![(vec!["int".to_string()], "a".to_string()), (vec!["int".to_string()], "b".to_string())]);
+        assert_eq!(function.args, vec![(vec![String::from("int")], String::from("a")), (vec![String::from("int")], String::from("b"))]);
         assert_eq!(function.statements.len(), 1);
         if let Statement::Return { value } = &function.statements[0] {
             assert_eq!(
                 value,
                 &Expr::Sum {
-                    terms: vec![Expr::QualifiedId { ids: vec!["a".to_string()] }, Expr::QualifiedId { ids: vec!["b".to_string()] }]
+                    terms: vec![Expr::QualifiedId { ids: vec![String::from("a")] }, Expr::QualifiedId { ids: vec![String::from("b")] }]
                 }
             );
         } else {
@@ -1121,16 +1121,16 @@ mod tests {
         let mut parser = Parser::new(lexer);
         let predicate = parser.parse_predicate().expect("Failed to parse predicate");
         assert_eq!(predicate.name, "isEven");
-        assert_eq!(predicate.args, vec![(vec!["int".to_string()], "x".to_string())]);
+        assert_eq!(predicate.args, vec![(vec![String::from("int")], String::from("x"))]);
         assert_eq!(predicate.statements.len(), 1);
         if let Statement::Expr(Expr::Eq { left, right }) = &predicate.statements[0] {
             assert_eq!(
                 **left,
                 Expr::Mul {
-                    factors: vec![Expr::Int("2".to_string()), Expr::QualifiedId { ids: vec!["x".to_string()] }]
+                    factors: vec![Expr::Int(String::from("2")), Expr::QualifiedId { ids: vec![String::from("x")] }]
                 }
             );
-            assert_eq!(**right, Expr::Int("0".to_string()));
+            assert_eq!(**right, Expr::Int(String::from("0")));
         } else {
             panic!("Expected equality statement in predicate body");
         }
@@ -1149,14 +1149,14 @@ mod tests {
         if let Ok(Statement::Disjunction { disjuncts }) = statement {
             assert_eq!(disjuncts.len(), 2);
             if let Statement::Expr(Expr::Eq { left, right }) = &disjuncts[0].0[0] {
-                assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::Int("1".to_string()));
+                assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("x")] });
+                assert_eq!(**right, Expr::Int(String::from("1")));
             } else {
                 panic!("Expected equality statement in first disjunct");
             }
             if let Statement::Expr(Expr::Eq { left, right }) = &disjuncts[1].0[0] {
-                assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::Int("2".to_string()));
+                assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("x")] });
+                assert_eq!(**right, Expr::Int(String::from("2")));
             } else {
                 panic!("Expected equality statement in second disjunct");
             }
@@ -1177,8 +1177,8 @@ mod tests {
         let statement = parse_statement(input).expect("Failed to parse priced disjunction");
         if let Statement::Disjunction { disjuncts } = statement {
             assert_eq!(disjuncts.len(), 2);
-            assert_eq!(disjuncts[0].1, Expr::Int("5".to_string()));
-            assert_eq!(disjuncts[1].1, Expr::Real("100".to_string(), "10".to_string()));
+            assert_eq!(disjuncts[0].1, Expr::Int(String::from("5")));
+            assert_eq!(disjuncts[1].1, Expr::Real(String::from("100"), String::from("10")));
         } else {
             panic!("Expected disjunction statement");
         }
@@ -1193,12 +1193,12 @@ mod tests {
         "#;
         let statement = parse_statement(input).expect("Failed to parse for loop");
         if let Statement::ForAll { var_type, var_name, statements } = statement {
-            assert_eq!(var_type, vec!["Point".to_string()]);
+            assert_eq!(var_type, vec![String::from("Point")]);
             assert_eq!(var_name, "i");
             assert_eq!(statements.len(), 1);
             if let Statement::Expr(Expr::Eq { left, right }) = &statements[0] {
-                assert_eq!(**left, Expr::QualifiedId { ids: vec!["x".to_string()] });
-                assert_eq!(**right, Expr::QualifiedId { ids: vec!["i".to_string()] });
+                assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("x")] });
+                assert_eq!(**right, Expr::QualifiedId { ids: vec![String::from("i")] });
             } else {
                 panic!("Expected equality statement in for loop body");
             }
@@ -1224,8 +1224,8 @@ mod tests {
             assert_eq!(args[0].0, "x");
             if let Expr::Mul { factors } = &args[0].1 {
                 assert_eq!(factors.len(), 2);
-                assert_eq!(factors[0], Expr::Int("2".to_string()));
-                assert_eq!(factors[1], Expr::QualifiedId { ids: vec!["x".to_string()] });
+                assert_eq!(factors[0], Expr::Int(String::from("2")));
+                assert_eq!(factors[1], Expr::QualifiedId { ids: vec![String::from("x")] });
             } else {
                 panic!("Expected multiplication expression in formula argument");
             }
@@ -1255,14 +1255,14 @@ mod tests {
         if let Statement::Disjunction { disjuncts } = statement {
             assert_eq!(disjuncts.len(), 2);
             // First disjunct
-            assert_eq!(disjuncts[0].1, Expr::Int("1".to_string()));
+            assert_eq!(disjuncts[0].1, Expr::Int(String::from("1")));
             if let Statement::ForAll { var_type, var_name, statements } = &disjuncts[0].0[1] {
-                assert_eq!(var_type, &vec!["Point".to_string()]);
+                assert_eq!(var_type, &vec![String::from("Point")]);
                 assert_eq!(var_name, "i");
                 assert_eq!(statements.len(), 1);
                 if let Statement::Expr(Expr::Eq { left, right }) = &statements[0] {
-                    assert_eq!(**left, Expr::QualifiedId { ids: vec!["y".to_string()] });
-                    assert_eq!(**right, Expr::QualifiedId { ids: vec!["i".to_string()] });
+                    assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("y")] });
+                    assert_eq!(**right, Expr::QualifiedId { ids: vec![String::from("i")] });
                 } else {
                     panic!("Expected equality statement in first for loop body");
                 }
@@ -1270,14 +1270,14 @@ mod tests {
                 panic!("Expected for loop in first disjunct");
             }
             // Second disjunct
-            assert_eq!(disjuncts[1].1, Expr::Real("420".to_string(), "10".to_string()));
+            assert_eq!(disjuncts[1].1, Expr::Real(String::from("420"), String::from("10")));
             if let Statement::ForAll { var_type, var_name, statements } = &disjuncts[1].0[1] {
-                assert_eq!(var_type, &vec!["Point".to_string()]);
+                assert_eq!(var_type, &vec![String::from("Point")]);
                 assert_eq!(var_name, "j");
                 assert_eq!(statements.len(), 1);
                 if let Statement::Expr(Expr::Eq { left, right }) = &statements[0] {
-                    assert_eq!(**left, Expr::QualifiedId { ids: vec!["y".to_string()] });
-                    assert_eq!(**right, Expr::QualifiedId { ids: vec!["j".to_string()] });
+                    assert_eq!(**left, Expr::QualifiedId { ids: vec![String::from("y")] });
+                    assert_eq!(**right, Expr::QualifiedId { ids: vec![String::from("j")] });
                 } else {
                     panic!("Expected equality statement in second for loop body");
                 }
@@ -1292,18 +1292,18 @@ mod tests {
         assert_eq!(parse_primary_expression("true"), Expr::Bool(true));
         assert_eq!(parse_primary_expression("false"), Expr::Bool(false));
         assert_eq!(parse_primary_expression("!true"), Expr::Not { term: Box::new(Expr::Bool(true)) });
-        assert_eq!(parse_primary_expression("123"), Expr::Int("123".to_string()));
-        assert_eq!(parse_primary_expression("12.34"), Expr::Real("1234".to_string(), "100".to_string()));
-        assert_eq!(parse_primary_expression("foo"), Expr::QualifiedId { ids: vec!["foo".to_string()] });
-        assert_eq!(parse_primary_expression("foo.bar"), Expr::QualifiedId { ids: vec!["foo".to_string(), "bar".to_string()] });
-        assert_eq!(parse_primary_expression("(123)"), Expr::Int("123".to_string()));
-        assert_eq!(parse_primary_expression("f()"), Expr::Function { name: vec!["f".to_string()], args: vec![] });
-        assert_eq!(parse_primary_expression("g(1, true)"), Expr::Function { name: vec!["g".to_string()], args: vec![Expr::Int("1".to_string()), Expr::Bool(true)] });
+        assert_eq!(parse_primary_expression("123"), Expr::Int(String::from("123")));
+        assert_eq!(parse_primary_expression("12.34"), Expr::Real(String::from("1234"), String::from("100")));
+        assert_eq!(parse_primary_expression("foo"), Expr::QualifiedId { ids: vec![String::from("foo")] });
+        assert_eq!(parse_primary_expression("foo.bar"), Expr::QualifiedId { ids: vec![String::from("foo"), String::from("bar")] });
+        assert_eq!(parse_primary_expression("(123)"), Expr::Int(String::from("123")));
+        assert_eq!(parse_primary_expression("f()"), Expr::Function { name: vec![String::from("f")], args: vec![] });
+        assert_eq!(parse_primary_expression("g(1, true)"), Expr::Function { name: vec![String::from("g")], args: vec![Expr::Int(String::from("1")), Expr::Bool(true)] });
         assert_eq!(
             parse_primary_expression("Math.max(1, 2)"),
             Expr::Function {
-                name: vec!["Math".to_string(), "max".to_string()],
-                args: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())]
+                name: vec![String::from("Math"), String::from("max")],
+                args: vec![Expr::Int(String::from("1")), Expr::Int(String::from("2"))]
             }
         );
     }
@@ -1311,16 +1311,16 @@ mod tests {
     #[test]
     fn test_arithmetic() {
         // 1 + 2
-        assert_eq!(parse_arithmetic_expression("1 + 2"), Expr::Sum { terms: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())] });
+        assert_eq!(parse_arithmetic_expression("1 + 2"), Expr::Sum { terms: vec![Expr::Int(String::from("1")), Expr::Int(String::from("2"))] });
 
         // 1 * 2
-        assert_eq!(parse_arithmetic_expression("1 * 2"), Expr::Mul { factors: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())] });
+        assert_eq!(parse_arithmetic_expression("1 * 2"), Expr::Mul { factors: vec![Expr::Int(String::from("1")), Expr::Int(String::from("2"))] });
 
         // 1 + 2 * 3
         assert_eq!(
             parse_arithmetic_expression("1 + 2 * 3"),
             Expr::Sum {
-                terms: vec![Expr::Int("1".to_string()), Expr::Mul { factors: vec![Expr::Int("2".to_string()), Expr::Int("3".to_string())] },]
+                terms: vec![Expr::Int(String::from("1")), Expr::Mul { factors: vec![Expr::Int(String::from("2")), Expr::Int(String::from("3"))] },]
             }
         );
 
@@ -1328,19 +1328,55 @@ mod tests {
         assert_eq!(
             parse_arithmetic_expression("(1 + 2) * 3"),
             Expr::Mul {
-                factors: vec![Expr::Sum { terms: vec![Expr::Int("1".to_string()), Expr::Int("2".to_string())] }, Expr::Int("3".to_string()),]
+                factors: vec![Expr::Sum { terms: vec![Expr::Int(String::from("1")), Expr::Int(String::from("2"))] }, Expr::Int(String::from("3")),]
             }
         );
     }
 
     #[test]
     fn test_relational() {
-        assert_eq!(parse_equality_expression("1 < 2"), Expr::Lt { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
-        assert_eq!(parse_equality_expression("1 <= 2"), Expr::Leq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
-        assert_eq!(parse_equality_expression("1 > 2"), Expr::Gt { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
-        assert_eq!(parse_equality_expression("1 >= 2"), Expr::Geq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
-        assert_eq!(parse_equality_expression("1 == 1"), Expr::Eq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("1".to_string())) });
-        assert_eq!(parse_equality_expression("1 != 2"), Expr::Neq { left: Box::new(Expr::Int("1".to_string())), right: Box::new(Expr::Int("2".to_string())) });
+        assert_eq!(
+            parse_equality_expression("1 < 2"),
+            Expr::Lt {
+                left: Box::new(Expr::Int(String::from("1"))),
+                right: Box::new(Expr::Int(String::from("2")))
+            }
+        );
+        assert_eq!(
+            parse_equality_expression("1 <= 2"),
+            Expr::Leq {
+                left: Box::new(Expr::Int(String::from("1"))),
+                right: Box::new(Expr::Int(String::from("2")))
+            }
+        );
+        assert_eq!(
+            parse_equality_expression("1 > 2"),
+            Expr::Gt {
+                left: Box::new(Expr::Int(String::from("1"))),
+                right: Box::new(Expr::Int(String::from("2")))
+            }
+        );
+        assert_eq!(
+            parse_equality_expression("1 >= 2"),
+            Expr::Geq {
+                left: Box::new(Expr::Int(String::from("1"))),
+                right: Box::new(Expr::Int(String::from("2")))
+            }
+        );
+        assert_eq!(
+            parse_equality_expression("1 == 1"),
+            Expr::Eq {
+                left: Box::new(Expr::Int(String::from("1"))),
+                right: Box::new(Expr::Int(String::from("1")))
+            }
+        );
+        assert_eq!(
+            parse_equality_expression("1 != 2"),
+            Expr::Neq {
+                left: Box::new(Expr::Int(String::from("1"))),
+                right: Box::new(Expr::Int(String::from("2")))
+            }
+        );
     }
 
     #[test]
@@ -1350,7 +1386,7 @@ mod tests {
         assert_eq!(
             parse_expression("!a & b").unwrap(),
             Expr::And {
-                terms: vec![Expr::Not { term: Box::new(Expr::QualifiedId { ids: vec!["a".to_string()] }) }, Expr::QualifiedId { ids: vec!["b".to_string()] }]
+                terms: vec![Expr::Not { term: Box::new(Expr::QualifiedId { ids: vec![String::from("a")] }) }, Expr::QualifiedId { ids: vec![String::from("b")] }]
             }
         );
 
@@ -1358,7 +1394,7 @@ mod tests {
         assert_eq!(
             parse_expression("a & b & c").unwrap(),
             Expr::And {
-                terms: vec![Expr::QualifiedId { ids: vec!["a".to_string()] }, Expr::QualifiedId { ids: vec!["b".to_string()] }, Expr::QualifiedId { ids: vec!["c".to_string()] },]
+                terms: vec![Expr::QualifiedId { ids: vec![String::from("a")] }, Expr::QualifiedId { ids: vec![String::from("b")] }, Expr::QualifiedId { ids: vec![String::from("c")] },]
             }
         );
 
@@ -1367,9 +1403,9 @@ mod tests {
             parse_expression("a | b & c").unwrap(),
             Expr::Or {
                 terms: vec![
-                    Expr::QualifiedId { ids: vec!["a".to_string()] },
+                    Expr::QualifiedId { ids: vec![String::from("a")] },
                     Expr::And {
-                        terms: vec![Expr::QualifiedId { ids: vec!["b".to_string()] }, Expr::QualifiedId { ids: vec!["c".to_string()] },]
+                        terms: vec![Expr::QualifiedId { ids: vec![String::from("b")] }, Expr::QualifiedId { ids: vec![String::from("c")] },]
                     }
                 ]
             }
@@ -1385,22 +1421,28 @@ mod tests {
                     Expr::Geq {
                         left: Box::new(Expr::Sum {
                             terms: vec![
-                                Expr::Function { name: vec!["f".to_string()], args: vec![Expr::QualifiedId { ids: vec!["x".to_string()] }] },
+                                Expr::Function {
+                                    name: vec![String::from("f")],
+                                    args: vec![Expr::QualifiedId { ids: vec![String::from("x")] }]
+                                },
                                 Expr::Mul {
                                     factors: vec![
-                                        Expr::Int("3".to_string()),
+                                        Expr::Int(String::from("3")),
                                         Expr::Sum {
-                                            terms: vec![Expr::QualifiedId { ids: vec!["y".to_string()] }, Expr::Opposite { term: Box::new(Expr::Int("2".to_string())) },]
+                                            terms: vec![Expr::QualifiedId { ids: vec![String::from("y")] }, Expr::Opposite { term: Box::new(Expr::Int(String::from("2"))) },]
                                         }
                                     ]
                                 }
                             ]
                         }),
-                        right: Box::new(Expr::Int("10".to_string()))
+                        right: Box::new(Expr::Int(String::from("10")))
                     },
                     Expr::Neq {
-                        left: Box::new(Expr::Function { name: vec!["g".to_string()], args: vec![Expr::QualifiedId { ids: vec!["z".to_string()] }] }),
-                        right: Box::new(Expr::Int("5".to_string()))
+                        left: Box::new(Expr::Function {
+                            name: vec![String::from("g")],
+                            args: vec![Expr::QualifiedId { ids: vec![String::from("z")] }]
+                        }),
+                        right: Box::new(Expr::Int(String::from("5")))
                     }
                 ]
             }

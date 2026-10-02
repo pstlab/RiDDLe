@@ -90,7 +90,7 @@ impl fmt::Display for FunctionDef {
         write!(
             f,
             "{} {}({}) {{\n{}\n}}",
-            self.return_type.as_ref().map(|t| t.join(".")).unwrap_or_else(|| "void".to_string()),
+            self.return_type.as_ref().map(|t| t.join(".")).unwrap_or_else(|| String::from("void")),
             self.name,
             self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", "),
             self.statements.iter().map(|s| format!("    {};", s)).collect::<Vec<_>>().join("\n")
@@ -213,7 +213,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             if let Slot::Primitive(var) = expr.clone()
                 && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
             {
-                if scp.core().assert(bool_expr) { Ok(()) } else { Err(RiddleError::InconsistencyError("Assertion failed".to_string())) }
+                if scp.core().assert(bool_expr) { Ok(()) } else { Err(RiddleError::InconsistencyError(String::from("Assertion failed"))) }
             } else {
                 Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", expr)))
             }
@@ -319,9 +319,9 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 })
                 .collect::<Result<_, _>>()?;
             if let Some(tau) = tau {
-                args.insert("tau".to_string(), tau);
+                args.insert(String::from("tau"), tau);
             } else if let Some(tau) = env.get("tau") {
-                args.insert("tau".to_string(), tau);
+                args.insert(String::from("tau"), tau);
             }
             let mut pred_hierarchy = VecDeque::from(vec![predicate.clone()]);
             while let Some(pred) = pred_hierarchy.pop_front() {
@@ -359,7 +359,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
         }
         Statement::Return { value } => {
             let ret = evaluate(scp.as_ref(), env.clone(), value)?;
-            env.set("__return".to_string(), ret);
+            env.set(String::from("__return"), ret);
             Ok(())
         }
     }
@@ -502,10 +502,10 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                         if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
                             Ok(bool_expr)
                         } else {
-                            Err(RiddleError::RuntimeError("Expected boolean expression in 'or' term".to_string()))
+                            Err(RiddleError::RuntimeError(String::from("Expected boolean expression in 'or' term")))
                         }
                     }
-                    _ => Err(RiddleError::RuntimeError("Expected boolean expression in 'or' term".to_string())),
+                    _ => Err(RiddleError::RuntimeError(String::from("Expected boolean expression in 'or' term"))),
                 })
                 .collect::<Result<_, _>>()?;
             Ok(Slot::Primitive(Rc::new(BoolExpr::Or { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms })))
@@ -518,10 +518,10 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                         if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
                             Ok(bool_expr)
                         } else {
-                            Err(RiddleError::RuntimeError("Expected boolean expression in 'and' term".to_string()))
+                            Err(RiddleError::RuntimeError(String::from("Expected boolean expression in 'and' term")))
                         }
                     }
-                    _ => Err(RiddleError::RuntimeError("Expected boolean expression in 'and' term".to_string())),
+                    _ => Err(RiddleError::RuntimeError(String::from("Expected boolean expression in 'and' term"))),
                 })
                 .collect::<Result<_, _>>()?;
             Ok(Slot::Primitive(Rc::new(BoolExpr::And { var_type: Rc::downgrade(&scp.core().bool_type()), terms: evaluated_terms })))
@@ -541,7 +541,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
             let object = class.new_instance();
             let object = match object {
                 Slot::ObjectRef(obj_id) => Ok(obj_id),
-                _ => Err(RiddleError::RuntimeError("Constructor did not return an object reference".to_string())),
+                _ => Err(RiddleError::RuntimeError(String::from("Constructor did not return an object reference"))),
             }?;
             constructor.call(object, args)?;
             Ok(Slot::ObjectRef(object))

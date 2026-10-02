@@ -454,7 +454,7 @@ mod tests {
     fn test_lexer_identifiers_and_numbers() {
         let input = "var1 var_2 123 45.67";
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::Identifier("var1".to_string()), Token::Identifier("var_2".to_string()), Token::IntLiteral("123".to_string()), Token::RealLiteral("45.67".to_string())];
+        let expected_tokens = vec![Token::Identifier(String::from("var1")), Token::Identifier(String::from("var_2")), Token::IntLiteral(String::from("123")), Token::RealLiteral(String::from("45.67"))];
         for expected in expected_tokens {
             let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
@@ -465,7 +465,7 @@ mod tests {
     fn test_lexer_string_literals() {
         let input = r#""hello" "world""#;
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::StringLiteral("hello".to_string()), Token::StringLiteral("world".to_string())];
+        let expected_tokens = vec![Token::StringLiteral(String::from("hello")), Token::StringLiteral(String::from("world"))];
         for expected in expected_tokens {
             let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
@@ -487,7 +487,7 @@ mod tests {
     fn test_lexer_riddle() {
         let input = "class Person { int age; string name; }";
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::Class, Token::Identifier("Person".to_string()), Token::LBrace, Token::Int, Token::Identifier("age".to_string()), Token::Semicolon, Token::String, Token::Identifier("name".to_string()), Token::Semicolon, Token::RBrace];
+        let expected_tokens = vec![Token::Class, Token::Identifier(String::from("Person")), Token::LBrace, Token::Int, Token::Identifier(String::from("age")), Token::Semicolon, Token::String, Token::Identifier(String::from("name")), Token::Semicolon, Token::RBrace];
         for expected in expected_tokens {
             let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
             assert_eq!(token, expected);
@@ -501,7 +501,7 @@ mod tests {
 
         // .5 -> RealLiteral
         let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
-        assert_eq!(token, Token::RealLiteral(".5".to_string()));
+        assert_eq!(token, Token::RealLiteral(String::from(".5")));
 
         // . -> Dot
         let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
@@ -509,18 +509,18 @@ mod tests {
 
         // .123 -> RealLiteral
         let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
-        assert_eq!(token, Token::RealLiteral(".123".to_string()));
+        assert_eq!(token, Token::RealLiteral(String::from(".123")));
 
         // 0.5 -> RealLiteral
         let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
-        assert_eq!(token, Token::RealLiteral("0.5".to_string()));
+        assert_eq!(token, Token::RealLiteral(String::from("0.5")));
     }
 
     #[test]
     fn test_lexer_skips_single_line_comments() {
         let input = "int x; // comment\n real y;";
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::Int, Token::Identifier("x".to_string()), Token::Semicolon, Token::Real, Token::Identifier("y".to_string()), Token::Semicolon];
+        let expected_tokens = vec![Token::Int, Token::Identifier(String::from("x")), Token::Semicolon, Token::Real, Token::Identifier(String::from("y")), Token::Semicolon];
 
         for expected in expected_tokens {
             let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
@@ -532,7 +532,7 @@ mod tests {
     fn test_lexer_skips_multiline_comments() {
         let input = "int /* ignore\nthis */ value;";
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::Int, Token::Identifier("value".to_string()), Token::Semicolon];
+        let expected_tokens = vec![Token::Int, Token::Identifier(String::from("value")), Token::Semicolon];
 
         for expected in expected_tokens {
             let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
@@ -544,7 +544,7 @@ mod tests {
     fn test_lexer_slash_still_tokenized_when_not_comment() {
         let input = "a / b";
         let mut lexer = Lexer::new(input);
-        let expected_tokens = vec![Token::Identifier("a".to_string()), Token::Slash, Token::Identifier("b".to_string())];
+        let expected_tokens = vec![Token::Identifier(String::from("a")), Token::Slash, Token::Identifier(String::from("b"))];
 
         for expected in expected_tokens {
             let (_start, token, _end) = lexer.next_token().expect("Failed to get next token");
