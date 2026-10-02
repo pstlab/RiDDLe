@@ -134,10 +134,10 @@ impl<'a> Parser<'a> {
                             functions.push(self.parse_function()?);
                         } else {
                             let field_type = match self.next() {
-                                Ok(Some((_, Token::Bool, _))) => vec![String::from(String::from("bool"))],
-                                Ok(Some((_, Token::Int, _))) => vec![String::from(String::from("int"))],
-                                Ok(Some((_, Token::Real, _))) => vec![String::from(String::from("real"))],
-                                Ok(Some((_, Token::String, _))) => vec![String::from(String::from("string"))],
+                                Ok(Some((_, Token::Bool, _))) => vec![String::from("bool")],
+                                Ok(Some((_, Token::Int, _))) => vec![String::from("int")],
+                                Ok(Some((_, Token::Real, _))) => vec![String::from("real")],
+                                Ok(Some((_, Token::String, _))) => vec![String::from("string")],
                                 Ok(Some((_, Token::Identifier(name), _))) => {
                                     let mut ids = vec![name];
                                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -199,10 +199,10 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
         while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
             let arg_type = match self.next() {
-                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from(String::from("bool"))]),
-                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from(String::from("int"))]),
-                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from(String::from("real"))]),
-                Ok(Some((_, Token::String, _))) => Ok(vec![String::from(String::from("string"))]),
+                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from("bool")]),
+                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from("int")]),
+                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from("real")]),
+                Ok(Some((_, Token::String, _))) => Ok(vec![String::from("string")]),
                 Ok(Some((_, Token::Identifier(name), _))) => {
                     let mut ids = vec![name];
                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -284,10 +284,10 @@ impl<'a> Parser<'a> {
         let return_type = match self.peek(0) {
             Ok(Some((_, Token::Bool, _))) | Ok(Some((_, Token::Int, _))) | Ok(Some((_, Token::Real, _))) | Ok(Some((_, Token::String, _))) | Ok(Some((_, Token::Identifier(_), _))) => {
                 let return_type = match self.next().unwrap() {
-                    Some((_, Token::Bool, _)) => vec![String::from(String::from("bool"))],
-                    Some((_, Token::Int, _)) => vec![String::from(String::from("int"))],
-                    Some((_, Token::Real, _)) => vec![String::from(String::from("real"))],
-                    Some((_, Token::String, _)) => vec![String::from(String::from("string"))],
+                    Some((_, Token::Bool, _)) => vec![String::from("bool")],
+                    Some((_, Token::Int, _)) => vec![String::from("int")],
+                    Some((_, Token::Real, _)) => vec![String::from("real")],
+                    Some((_, Token::String, _)) => vec![String::from("string")],
                     Some((_, Token::Identifier(name), _)) => {
                         let mut ids = vec![name];
                         while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -318,10 +318,10 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
         while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
             let arg_type = match self.next() {
-                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from(String::from("bool"))]),
-                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from(String::from("int"))]),
-                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from(String::from("real"))]),
-                Ok(Some((_, Token::String, _))) => Ok(vec![String::from(String::from("string"))]),
+                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from("bool")]),
+                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from("int")]),
+                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from("real")]),
+                Ok(Some((_, Token::String, _))) => Ok(vec![String::from("string")]),
                 Ok(Some((_, Token::Identifier(name), _))) => {
                     let mut ids = vec![name];
                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -369,10 +369,10 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
         while !matches!(self.peek(0), Ok(Some((_, Token::RParen, _)))) {
             let arg_type = match self.next() {
-                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from(String::from("bool"))]),
-                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from(String::from("int"))]),
-                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from(String::from("real"))]),
-                Ok(Some((_, Token::String, _))) => Ok(vec![String::from(String::from("string"))]),
+                Ok(Some((_, Token::Bool, _))) => Ok(vec![String::from("bool")]),
+                Ok(Some((_, Token::Int, _))) => Ok(vec![String::from("int")]),
+                Ok(Some((_, Token::Real, _))) => Ok(vec![String::from("real")]),
+                Ok(Some((_, Token::String, _))) => Ok(vec![String::from("string")]),
                 Ok(Some((_, Token::Identifier(name), _))) => {
                     let mut ids = vec![name];
                     while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
@@ -439,10 +439,10 @@ impl<'a> Parser<'a> {
         match self.peek(0) {
             Ok(Some((_, Token::Bool, _))) | Ok(Some((_, Token::Int, _))) | Ok(Some((_, Token::Real, _))) | Ok(Some((_, Token::String, _))) => {
                 let field_type = match self.next().unwrap() {
-                    Some((_, Token::Bool, _)) => vec![String::from(String::from("bool"))],
-                    Some((_, Token::Int, _)) => vec![String::from(String::from("int"))],
-                    Some((_, Token::Real, _)) => vec![String::from(String::from("real"))],
-                    Some((_, Token::String, _)) => vec![String::from(String::from("string"))],
+                    Some((_, Token::Bool, _)) => vec![String::from("bool")],
+                    Some((_, Token::Int, _)) => vec![String::from("int")],
+                    Some((_, Token::Real, _)) => vec![String::from("real")],
+                    Some((_, Token::String, _)) => vec![String::from("string")],
                     _ => unreachable!(),
                 };
                 let name = match self.next() {
@@ -808,7 +808,7 @@ impl<'a> Parser<'a> {
                 }
             }
             Ok(Some((_, Token::This, _))) => {
-                let mut ids = vec![String::from(String::from("this"))];
+                let mut ids = vec![String::from("this")];
                 while let Ok(Some((_, Token::Dot, _))) = self.peek(0) {
                     self.expect(Token::Dot)?; // consume '.'
                     if let Ok(Some((_, Token::Identifier(next_name), _))) = self.next() {
