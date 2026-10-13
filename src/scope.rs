@@ -360,7 +360,67 @@ impl Constructor {
         for field in class.get_fields() {
             let fld_tp = get_type_by_path(self.scope.as_ref(), field.field_type())?;
             if obj_env.get(field.name()).is_none() {
-                if let Some(default_expr) = field.default() {
+                let init_match = self.init.iter().find(|(init_path, _)| init_path.len() == 1 && init_path[0] == field.name());
+
+                if let Some((_, init_exprs)) = init_match {
+                    let exprs = init_exprs.iter().map(|e| evaluate(self.scope.as_ref(), constructor_env.clone(), e)).collect::<Result<Vec<_>, _>>()?;
+                    if let Some(field_class) = fld_tp.clone().as_class() {
+                        let types = exprs
+                            .iter()
+                            .map(|e| match e {
+                                Slot::Primitive(p) => Ok(p.var_type()),
+                                Slot::ObjectRef(obj_id) => Ok(self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type()),
+                                Slot::AtomRef(atom_id) => Ok(self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type()),
+                            })
+                            .collect::<Result<Vec<_>, _>>()?;
+
+                        if let Some(constructor) = field_class.constructor(&types) {
+                            let instances = field_class.instances();
+                            if instances.is_empty() {
+                                return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", field.name(), field_class.full_name())));
+                            }
+
+                            let field_slot = if instances.len() == 1 { Slot::ObjectRef(instances[0]) } else { self.scope.clone().core().new_var(field_class.clone(), &instances)? };
+
+                            if let Slot::ObjectRef(new_obj_id) = field_slot {
+                                constructor.call(new_obj_id, exprs)?;
+                            } else {
+                                return Err(RiddleError::RuntimeError(format!("Expected ObjectRef for instantiation of field '{}'", field.name())));
+                            }
+
+                            obj_env.set(field.name().to_string(), field_slot);
+                        } else {
+                            if exprs.len() == 1 {
+                                let value = exprs.into_iter().next().unwrap();
+                                let value_type = &types[0]; // Lo abbiamo già risolto sopra
+
+                                if is_assignable_from(&fld_tp, value_type) {
+                                    obj_env.set(field.name().to_string(), value);
+                                } else {
+                                    return Err(RiddleError::TypeError(format!("Field '{}' expected to be of type '{}', got '{}', and no matching constructor was found", field.name(), fld_tp.full_name(), value_type.full_name())));
+                                }
+                            } else {
+                                return Err(RiddleError::NotFound(format!("Constructor for field class '{}' with specified argument types", field_class.full_name())));
+                            }
+                        }
+                    } else {
+                        if exprs.len() != 1 {
+                            return Err(RiddleError::RuntimeError(format!("Primitive field '{}' must be initialized with exactly one expression", field.name())));
+                        }
+
+                        let value = exprs.into_iter().next().unwrap();
+                        let value_type = match &value {
+                            Slot::Primitive(p) => p.var_type(),
+                            Slot::ObjectRef(obj_id) => self.scope.core().get_object(*obj_id).unwrap().var_type(),
+                            Slot::AtomRef(atom_id) => self.scope.core().get_atom(*atom_id).unwrap().var_type(),
+                        };
+
+                        if !is_assignable_from(&fld_tp, &value_type) {
+                            return Err(RiddleError::TypeError(format!("Field '{}' expected to be of type '{}', got '{}'", field.name(), fld_tp.full_name(), value_type.full_name())));
+                        }
+                        obj_env.set(field.name().to_string(), value);
+                    }
+                } else if let Some(default_expr) = field.default() {
                     let value = evaluate(self.scope.as_ref(), constructor_env.clone(), default_expr)?;
                     let value_type = match &value {
                         Slot::Primitive(p) => p.var_type(),
