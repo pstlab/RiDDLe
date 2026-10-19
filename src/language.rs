@@ -332,12 +332,15 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
         Statement::Formula { kind, name, tau, predicate_name, args, resolution_constraint } => {
             let tau = if tau.is_empty() { None } else { Some(get_var_by_path(scp.core().as_ref(), env.as_ref(), tau)?) };
             let predicate = if let Some(tau) = tau.as_ref() {
-                let tau = match tau {
-                    Slot::Primitive(var) => Err(RiddleError::NotAClass(format!("Tau variable is a primitive variable of type '{}', expected a class", var.var_type().full_name()))),
-                    Slot::ObjectRef(obj_id) => scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id))),
-                    Slot::AtomRef(atom_id) => Err(RiddleError::NotAClass(format!("Tau variable is an atom {}, expected a class", *atom_id))),
-                }?;
-                tau.var_type().as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", tau.var_type().full_name())))?.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, tau.var_type().full_name())))?
+                let var_type = match tau {
+                    Slot::Primitive(var) => var.var_type(),
+                    Slot::ObjectRef(obj_id) => scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.var_type(),
+                    Slot::AtomRef(atom_id) => {
+                        return Err(RiddleError::NotAClass(format!("Tau variable is an atom {}, expected a class", *atom_id)));
+                    }
+                };
+                let class = var_type.clone().as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", var_type.full_name())))?;
+                class.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, var_type.full_name())))?
             } else {
                 scp.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}'", predicate_name)))?
             };
