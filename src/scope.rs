@@ -644,8 +644,6 @@ pub trait Class: Type + Scope {
     fn parents(&self) -> &[Vec<String>];
     fn constructors(&self) -> Vec<Rc<Constructor>>;
     fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>>;
-    fn predicates(&self) -> Vec<Rc<Predicate>>;
-    fn classes(&self) -> Vec<Rc<dyn Class>>;
     fn instances(&self) -> Vec<ObjectId>;
     fn add_instance(&self, instance: ObjectId);
 }
@@ -778,14 +776,6 @@ impl Class for CommonClass {
                 true
             })
             .cloned()
-    }
-
-    fn predicates(&self) -> Vec<Rc<Predicate>> {
-        self.scope.predicates.borrow().values().cloned().collect()
-    }
-
-    fn classes(&self) -> Vec<Rc<dyn Class>> {
-        self.scope.types.borrow().values().filter_map(|t| t.clone().as_class()).collect()
     }
 
     fn instances(&self) -> Vec<ObjectId> {
