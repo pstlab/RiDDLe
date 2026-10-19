@@ -275,7 +275,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                         }
                     }
                     env.set(name.clone(), value);
-                } else if let Some(class) = fld_tp.clone().as_class() {
+                } else if let Some(class) = fld_tp.as_class() {
                     let instances = class.instances();
                     if instances.is_empty() {
                         return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", name, class.full_name())));
@@ -339,7 +339,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                         return Err(RiddleError::NotAClass(format!("Tau variable is an atom {}, expected a class", *atom_id)));
                     }
                 };
-                let class = var_type.clone().as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", var_type.full_name())))?;
+                let class = var_type.as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in tau path", var_type.full_name())))?;
                 class.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, var_type.full_name())))?
             } else {
                 scp.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}'", predicate_name)))?
@@ -361,7 +361,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 for (arg_type, name) in pred.args() {
                     if !args.contains_key(name) {
                         let arg_tp = get_type_by_path(scp.as_ref(), arg_type)?;
-                        if let Some(class) = arg_tp.clone().as_class() {
+                        if let Some(class) = arg_tp.as_class() {
                             let instances = class.instances();
                             if instances.is_empty() {
                                 return Err(RiddleError::RuntimeError(format!("No instances found for argument '{}' of type '{}'", name, class.full_name())));

@@ -18,12 +18,18 @@ pub trait Type {
     fn full_name(&self) -> String {
         self.name().to_string()
     }
-    fn as_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
+    fn into_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
         None
     }
 
     /// Creates a new instance of the type, returning a [`Slot`] that can be used
     fn new_instance(self: Rc<Self>) -> Slot;
+}
+
+impl dyn Type {
+    pub fn as_class(self: &Rc<Self>) -> Option<Rc<dyn Class>> {
+        Rc::clone(self).into_class()
+    }
 }
 
 pub struct BoolType {
@@ -379,7 +385,7 @@ impl Constructor {
 
                 if let Some((_, init_exprs)) = init_match {
                     let exprs = init_exprs.iter().map(|e| evaluate(self.scope.as_ref(), constructor_env.clone(), e)).collect::<Result<Vec<_>, _>>()?;
-                    if let Some(field_class) = fld_tp.clone().as_class() {
+                    if let Some(field_class) = fld_tp.as_class() {
                         let types = exprs
                             .iter()
                             .map(|e| match e {
@@ -446,7 +452,7 @@ impl Constructor {
                         return Err(RiddleError::TypeError(format!("Field '{}' expected to be of type '{}', got '{}'", field.name(), fld_tp.full_name(), value_type.full_name())));
                     }
                     obj_env.set(field.name().to_string(), value);
-                } else if let Some(class) = fld_tp.clone().as_class() {
+                } else if let Some(class) = fld_tp.as_class() {
                     let instances = class.instances();
                     if instances.is_empty() {
                         return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", field.name(), class.full_name())));
@@ -690,7 +696,7 @@ impl Type for CommonClass {
         }
     }
 
-    fn as_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
+    fn into_class(self: Rc<Self>) -> Option<Rc<dyn Class>> {
         Some(self)
     }
 
@@ -818,8 +824,8 @@ pub fn is_assignable_from(target: &Rc<dyn Type>, source: &Rc<dyn Type>) -> bool 
         return true;
     }
 
-    if let Some(target_class) = target.clone().as_class()
-        && let Some(source_class) = source.clone().as_class()
+    if let Some(target_class) = target.as_class()
+        && let Some(source_class) = source.as_class()
         && is_subclass_of(source_class.clone(), &target_class.full_name())
     {
         return true;
