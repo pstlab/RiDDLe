@@ -143,10 +143,13 @@ pub trait Scope {
         None
     }
 
-    fn get_fields(&self) -> Vec<Rc<Field>>;
+    fn fields(&self) -> Vec<Rc<Field>>;
     fn get_field(&self, name: &str) -> Option<Rc<Field>>;
+    fn functions(&self) -> Vec<Rc<Function>>;
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>>;
+    fn types(&self) -> Vec<Rc<dyn Type>>;
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>>;
+    fn predicates(&self) -> Vec<Rc<Predicate>>;
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>>;
 }
 
@@ -245,20 +248,16 @@ impl Scope for CommonScope {
         self.scope.as_ref()?.upgrade()
     }
 
-    fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-        self.types.borrow().get(name).cloned().or_else(|| self.scope()?.get_type(name))
-    }
-
-    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
-        self.predicates.borrow().get(name).cloned().or_else(|| self.scope()?.get_predicate(name))
-    }
-
-    fn get_fields(&self) -> Vec<Rc<Field>> {
+    fn fields(&self) -> Vec<Rc<Field>> {
         self.fields.borrow().values().cloned().collect()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.fields.borrow().get(name).cloned().or_else(|| self.scope()?.get_field(name))
+    }
+
+    fn functions(&self) -> Vec<Rc<Function>> {
+        self.functions.borrow().values().flat_map(|v| v.clone()).collect()
     }
 
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
@@ -282,6 +281,22 @@ impl Scope for CommonScope {
                     .cloned()
             })
             .or_else(|| self.scope.as_ref()?.upgrade()?.get_function(name, types))
+    }
+
+    fn types(&self) -> Vec<Rc<dyn Type>> {
+        self.types.borrow().values().cloned().collect()
+    }
+
+    fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
+        self.types.borrow().get(name).cloned().or_else(|| self.scope()?.get_type(name))
+    }
+
+    fn predicates(&self) -> Vec<Rc<Predicate>> {
+        self.predicates.borrow().values().cloned().collect()
+    }
+
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
+        self.predicates.borrow().get(name).cloned().or_else(|| self.scope()?.get_predicate(name))
     }
 }
 
@@ -357,7 +372,7 @@ impl Constructor {
         }
 
         // we then populate fields declared in this class..
-        for field in class.get_fields() {
+        for field in class.fields() {
             let fld_tp = get_type_by_path(self.scope.as_ref(), field.field_type())?;
             if obj_env.get(field.name()).is_none() {
                 let init_match = self.init.iter().find(|(init_path, _)| init_path.len() == 1 && init_path[0] == field.name());
@@ -464,20 +479,32 @@ impl Scope for Constructor {
         self.scope.scope()
     }
 
-    fn get_fields(&self) -> Vec<Rc<Field>> {
-        self.scope.get_fields()
+    fn fields(&self) -> Vec<Rc<Field>> {
+        self.scope.fields()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(name)
     }
 
+    fn functions(&self) -> Vec<Rc<Function>> {
+        self.scope.functions()
+    }
+
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
         self.scope.get_function(name, types)
     }
 
+    fn types(&self) -> Vec<Rc<dyn Type>> {
+        self.scope.types()
+    }
+
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.scope.get_type(name)
+    }
+
+    fn predicates(&self) -> Vec<Rc<Predicate>> {
+        self.scope.predicates()
     }
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
@@ -579,20 +606,32 @@ impl Scope for Function {
         self.scope.scope()
     }
 
-    fn get_fields(&self) -> Vec<Rc<Field>> {
-        self.scope.get_fields()
+    fn fields(&self) -> Vec<Rc<Field>> {
+        self.scope.fields()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(name)
     }
 
+    fn functions(&self) -> Vec<Rc<Function>> {
+        self.scope.functions()
+    }
+
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
         self.scope.get_function(name, types)
     }
 
+    fn types(&self) -> Vec<Rc<dyn Type>> {
+        self.scope.types()
+    }
+
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.scope.get_type(name)
+    }
+
+    fn predicates(&self) -> Vec<Rc<Predicate>> {
+        self.scope.predicates()
     }
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
@@ -681,20 +720,32 @@ impl Scope for CommonClass {
         Some(self)
     }
 
-    fn get_fields(&self) -> Vec<Rc<Field>> {
-        self.scope.get_fields()
+    fn fields(&self) -> Vec<Rc<Field>> {
+        self.scope.fields()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(name)
     }
 
+    fn functions(&self) -> Vec<Rc<Function>> {
+        self.scope.functions()
+    }
+
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
         self.scope.get_function(name, types)
     }
 
+    fn types(&self) -> Vec<Rc<dyn Type>> {
+        self.scope.types()
+    }
+
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.scope.get_type(name)
+    }
+
+    fn predicates(&self) -> Vec<Rc<Predicate>> {
+        self.scope.predicates()
     }
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
@@ -874,20 +925,32 @@ impl Scope for Predicate {
         self.scope.scope()
     }
 
-    fn get_fields(&self) -> Vec<Rc<Field>> {
-        self.scope.get_fields()
+    fn fields(&self) -> Vec<Rc<Field>> {
+        self.scope.fields()
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
         self.scope.get_field(name)
     }
 
+    fn functions(&self) -> Vec<Rc<Function>> {
+        self.scope.functions()
+    }
+
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
         self.scope.get_function(name, types)
     }
 
+    fn types(&self) -> Vec<Rc<dyn Type>> {
+        self.scope.types()
+    }
+
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
         self.scope.get_type(name)
+    }
+
+    fn predicates(&self) -> Vec<Rc<Predicate>> {
+        self.scope.predicates()
     }
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
