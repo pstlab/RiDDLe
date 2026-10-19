@@ -9,7 +9,6 @@ use riddle::{
     scope::{Class, Field, Function, Predicate, Scope, Type, arith_type, get_type_by_path},
 };
 use std::{
-    any::Any,
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
@@ -29,10 +28,6 @@ impl Var for TestObject {
     fn var_type(&self) -> Rc<dyn Type> {
         self.var_type.upgrade().expect("Type has been dropped").clone()
     }
-
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
 }
 
 struct TestEnum {
@@ -51,11 +46,7 @@ impl Var for TestEnum {
         self.var_type.upgrade().expect("Type has been dropped").clone()
     }
 
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
-
-    fn as_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
+    fn into_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
         Some(self.clone())
     }
 }

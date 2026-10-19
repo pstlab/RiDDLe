@@ -133,7 +133,7 @@ impl CommonCore {
 
 impl Scope for CommonCore {
     fn core(&self) -> Rc<dyn Core> {
-        self.scope.clone().core()
+        self.scope.core()
     }
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
@@ -195,7 +195,6 @@ impl Env for CommonCore {
 mod tests {
     use super::*;
     use crate::{env::Var, scope::arith_type};
-    use std::any::Any;
 
     struct TestObject {
         tp: Weak<dyn Type>,
@@ -210,10 +209,6 @@ mod tests {
     impl Var for TestObject {
         fn var_type(&self) -> Rc<dyn Type> {
             self.tp.upgrade().expect("Type should still exist")
-        }
-
-        fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-            self
         }
     }
 

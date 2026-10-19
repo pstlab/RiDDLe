@@ -76,14 +76,26 @@ impl fmt::Display for Slot {
     }
 }
 
-pub trait Var {
+pub trait Var: Any {
     /// Returns the type of this variable.
     fn var_type(&self) -> Rc<dyn Type>;
-    /// Returns a reference to this variable as a `dyn Any` for downcasting.
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any>;
     /// Returns a reference to this variable as a `dyn Env` if it is an environment.
-    fn as_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
+    fn into_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
         None
+    }
+}
+
+impl dyn Var {
+    pub fn as_env(self: &Rc<Self>) -> Option<Rc<dyn Env>> {
+        Rc::clone(self).into_env()
+    }
+
+    pub fn downcast<T: Any>(self: &Rc<Self>) -> Option<Rc<T>> {
+        Rc::clone(self).into_any().downcast::<T>().ok()
+    }
+
+    pub fn into_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
     }
 }
 
@@ -143,10 +155,6 @@ impl Var for BoolExpr {
             BoolExpr::Term { var_type: var_tp, .. } | BoolExpr::Not { var_type: var_tp, .. } | BoolExpr::Eq { var_type: var_tp, .. } | BoolExpr::Lt { var_type: var_tp, .. } | BoolExpr::Leq { var_type: var_tp, .. } | BoolExpr::Or { var_type: var_tp, .. } | BoolExpr::And { var_type: var_tp, .. } => var_tp.upgrade().unwrap(),
         }
     }
-
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
 }
 
 pub struct Object {
@@ -174,11 +182,7 @@ impl Var for Object {
         self.class.upgrade().unwrap()
     }
 
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
-
-    fn as_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
+    fn into_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
         Some(self.clone())
     }
 }
@@ -214,9 +218,9 @@ impl Atom {
         // Determine the environment for this atom based on the "tau" argument, if present.
         let env = match args.get("tau") {
             Some(tau) => match tau {
-                Slot::Primitive(var) => var.clone().as_env().expect("Tau variable does not have an environment").clone(),
-                Slot::ObjectRef(obj_id) => predicate.clone().core().get_object(*obj_id).expect("Object ID in tau does not exist").as_env().expect("Object in tau does not have an environment").clone(),
-                Slot::AtomRef(atom_id) => predicate.clone().core().get_atom(*atom_id).expect("Atom ID in tau does not exist").as_env().expect("Atom in tau does not have an environment").clone(),
+                Slot::Primitive(var) => var.clone().into_env().expect("Tau variable does not have an environment"),
+                Slot::ObjectRef(obj_id) => predicate.core().get_object(*obj_id).expect("Object ID in tau does not exist").into_env().expect("Object in tau does not have an environment"),
+                Slot::AtomRef(atom_id) => predicate.core().get_atom(*atom_id).expect("Atom ID in tau does not exist").into_env().expect("Atom in tau does not have an environment"),
             },
             None => predicate.core(),
         };
@@ -250,11 +254,7 @@ impl Var for Atom {
         self.predicate.upgrade().unwrap()
     }
 
-    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
-        self
-    }
-
-    fn as_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
+    fn into_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
         Some(self.clone())
     }
 }
@@ -394,14 +394,14 @@ pub fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
 pub fn get_var_by_path(core: &dyn Core, env: &dyn Env, path: &[String]) -> Result<Slot, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
     rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| match acc {
-        Slot::Primitive(var) => var.clone().as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id, first))),
+        Slot::Primitive(var) => var.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id, first))),
         Slot::ObjectRef(obj_id) => {
             let obj = core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
-            obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id, *obj_id)))
+            obj.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id, *obj_id)))
         }
         Slot::AtomRef(atom_id) => {
             let atom = core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?;
-            atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id, *atom_id)))
+            atom.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id, *atom_id)))
         }
     })
 }

@@ -338,7 +338,7 @@ impl Constructor {
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
-        let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *object)))?.as_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
+        let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *object)))?.into_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
         // the context in which the constructor is invoked..
         let constructor_env = Rc::new(CommonEnv::new(Some(obj_env.clone())));
         constructor_env.set(String::from("this"), Slot::ObjectRef(object));
@@ -401,7 +401,7 @@ impl Constructor {
                                 return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", field.name(), field_class.full_name())));
                             }
 
-                            let field_slot = if instances.len() == 1 { Slot::ObjectRef(instances[0]) } else { self.scope.clone().core().new_var(field_class.clone(), &instances)? };
+                            let field_slot = if instances.len() == 1 { Slot::ObjectRef(instances[0]) } else { self.scope.core().new_var(field_class.clone(), &instances)? };
 
                             if let Slot::ObjectRef(new_obj_id) = field_slot {
                                 constructor.call(new_obj_id, exprs)?;
@@ -459,10 +459,10 @@ impl Constructor {
                     } else if instances.len() == 1 {
                         obj_env.set(field.name().to_string(), Slot::ObjectRef(instances[0]));
                     } else {
-                        obj_env.set(field.name().to_string(), self.scope.clone().core().new_var(class, &instances)?);
+                        obj_env.set(field.name().to_string(), self.scope.core().new_var(class, &instances)?);
                     }
                 } else {
-                    obj_env.set(field.name().to_string(), fld_tp.clone().new_instance());
+                    obj_env.set(field.name().to_string(), fld_tp.new_instance());
                 }
             }
         }

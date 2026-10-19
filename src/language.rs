@@ -241,7 +241,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
         Statement::Expr(expr) => {
             let expr = evaluate(scp.as_ref(), env, expr)?;
             if let Slot::Primitive(var) = expr.clone()
-                && let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>()
+                && let Some(bool_expr) = var.downcast::<BoolExpr>()
             {
                 if scp.core().assert(bool_expr) { Ok(()) } else { Err(RiddleError::InconsistencyError(String::from("Assertion failed"))) }
             } else {
@@ -302,12 +302,12 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                     Slot::Primitive(_) => Err(RiddleError::NotAnEnvironment(format!("Variable '{}' in assignment path is a primitive variable, cannot assign to '{}'", rest.join("."), last))),
                     Slot::ObjectRef(obj_id) => {
                         let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
-                        obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.set(last.to_string(), value);
+                        obj.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.set(last.to_string(), value);
                         Ok(())
                     }
                     Slot::AtomRef(atom_id) => {
                         let atom = scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?;
-                        atom.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.set(last.to_string(), value);
+                        atom.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.set(last.to_string(), value);
                         Ok(())
                     }
                 }
@@ -417,7 +417,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
             let evaluated_term = evaluate(scp, env, term)?;
             match &evaluated_term {
                 Slot::Primitive(var) => {
-                    if let Ok(bool_expr) = var.clone().as_any().downcast::<BoolExpr>() {
+                    if let Some(bool_expr) = var.downcast::<BoolExpr>() {
                         Ok(Slot::Primitive(Rc::new(BoolExpr::Not { var_type: Rc::downgrade(&scp.core().bool_type()), term: bool_expr })))
                     } else {
                         Err(RiddleError::RuntimeError(format!("Expected boolean expression, got {}", evaluated_term)))
@@ -460,7 +460,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                     Slot::ObjectRef(obj_id) => {
                         let obj = scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
                         if let Some(function) = obj.class().get_function(last, &arg_types) {
-                            let out = function.call(obj.as_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?, args)?;
+                            let out = function.call(obj.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?, args)?;
                             out.ok_or_else(|| RiddleError::RuntimeError(format!("Function '{}' with argument types ({}) did not return a value", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))
                         } else {
                             Err(RiddleError::NotFound(format!("Function '{}' with argument types ({}) not found in class '{}'", last, arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "), obj.class().full_name())))
@@ -532,7 +532,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 .iter()
                 .map(|t| match evaluate(scp, env.clone(), t)? {
                     Slot::Primitive(var) => {
-                        if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
+                        if let Some(bool_expr) = var.downcast::<BoolExpr>() {
                             Ok(bool_expr)
                         } else {
                             Err(RiddleError::RuntimeError(String::from("Expected boolean expression in 'or' term")))
@@ -548,7 +548,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                 .iter()
                 .map(|t| match evaluate(scp, env.clone(), t)? {
                     Slot::Primitive(var) => {
-                        if let Ok(bool_expr) = var.as_any().downcast::<BoolExpr>() {
+                        if let Some(bool_expr) = var.downcast::<BoolExpr>() {
                             Ok(bool_expr)
                         } else {
                             Err(RiddleError::RuntimeError(String::from("Expected boolean expression in 'and' term")))
