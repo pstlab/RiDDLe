@@ -6,7 +6,7 @@ use crate::{
 };
 use std::{
     cell::RefCell,
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     fmt,
     rc::{Rc, Weak},
 };
@@ -959,6 +959,31 @@ impl Scope for Predicate {
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
         self.scope.get_predicate(name).or_else(|| self.parent_predicates().into_iter().find_map(|p| p.get_predicate(name))).or_else(|| self.scope.scope()?.get_predicate(name))
     }
+}
+
+/// Returns the most specific common type for a set of types, if one exists.
+///
+/// The function checks if all types are assignable from the first type. If not, it traverses the parent classes of the first type to find a common ancestor that is assignable from all types.
+pub fn common_type(types: &[Rc<dyn Type>]) -> Option<Rc<dyn Type>> {
+    let (first, rest) = types.split_first()?;
+    if rest.iter().all(|t| is_assignable_from(first, t)) {
+        return Some(first.clone());
+    }
+
+    let mut queue = VecDeque::from([first.as_class()?]);
+    while let Some(cls) = queue.pop_front() {
+        for parent_path in cls.parents() {
+            if let Ok(parent_tp) = get_type_by_path(cls.as_ref(), parent_path) {
+                if rest.iter().all(|t| is_assignable_from(&parent_tp, t)) {
+                    return Some(parent_tp);
+                }
+                if let Some(parent_cls) = parent_tp.as_class() {
+                    queue.push_back(parent_cls);
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Resolves a type by a dotted path-like sequence of names.
