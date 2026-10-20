@@ -679,6 +679,10 @@ impl CommonClass {
         class.constructors.borrow_mut().extend(constructors_def.into_iter().map(|c| Rc::new(Constructor::new(weak_class.clone(), c))));
         class
     }
+
+    fn parent_classes(&self) -> Vec<Rc<dyn Class>> {
+        self.parents.iter().filter_map(|parent_path| get_type_by_path(self.scope.as_ref(), parent_path).ok()?.as_class()).collect()
+    }
 }
 
 impl Type for CommonClass {
@@ -702,11 +706,7 @@ impl Type for CommonClass {
 
     fn new_instance(self: Rc<Self>) -> Slot {
         let instance = self.core().new_object(self.clone());
-        self.instances.borrow_mut().push(instance);
-        for parent in &self.parents {
-            let parent_class = get_type_by_path(self.as_ref(), parent).expect("Parent class should exist").as_class().expect("Parent class should be a class");
-            parent_class.add_instance(instance);
-        }
+        self.add_instance(instance);
         Slot::ObjectRef(instance)
     }
 }
@@ -729,7 +729,7 @@ impl Scope for CommonClass {
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
-        self.scope.get_field(name)
+        self.scope.get_field(name).or_else(|| self.parent_classes().into_iter().find_map(|p| p.get_field(name))).or_else(|| self.scope.scope()?.get_field(name))
     }
 
     fn functions(&self) -> Vec<Rc<Function>> {
@@ -737,7 +737,7 @@ impl Scope for CommonClass {
     }
 
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, types)
+        self.scope.get_function(name, types).or_else(|| self.parent_classes().into_iter().find_map(|p| p.get_function(name, types))).or_else(|| self.scope.scope()?.get_function(name, types))
     }
 
     fn types(&self) -> Vec<Rc<dyn Type>> {
@@ -745,7 +745,7 @@ impl Scope for CommonClass {
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-        self.scope.get_type(name)
+        self.scope.get_type(name).or_else(|| self.parent_classes().into_iter().find_map(|p| p.get_type(name))).or_else(|| self.scope.scope()?.get_type(name))
     }
 
     fn predicates(&self) -> Vec<Rc<Predicate>> {
@@ -753,7 +753,7 @@ impl Scope for CommonClass {
     }
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
-        self.scope.get_predicate(name)
+        self.scope.get_predicate(name).or_else(|| self.parent_classes().into_iter().find_map(|p| p.get_predicate(name))).or_else(|| self.scope.scope()?.get_predicate(name))
     }
 }
 
@@ -790,6 +790,9 @@ impl Class for CommonClass {
 
     fn add_instance(&self, instance: ObjectId) {
         self.instances.borrow_mut().push(instance);
+        for parent in self.parent_classes() {
+            parent.add_instance(instance);
+        }
     }
 }
 
@@ -900,6 +903,10 @@ impl Predicate {
     pub fn atoms(&self) -> Vec<AtomId> {
         self.atoms.borrow().clone()
     }
+
+    fn parent_predicates(&self) -> Vec<Rc<Predicate>> {
+        self.parents.iter().filter_map(|parent_path| get_predicate_by_path(&self.scope, parent_path).ok()).collect()
+    }
 }
 
 impl Type for Predicate {
@@ -926,7 +933,7 @@ impl Scope for Predicate {
     }
 
     fn get_field(&self, name: &str) -> Option<Rc<Field>> {
-        self.scope.get_field(name)
+        self.scope.get_field(name).or_else(|| self.parent_predicates().into_iter().find_map(|p| p.get_field(name))).or_else(|| self.scope.scope()?.get_field(name))
     }
 
     fn functions(&self) -> Vec<Rc<Function>> {
@@ -934,7 +941,7 @@ impl Scope for Predicate {
     }
 
     fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, types)
+        self.scope.get_function(name, types).or_else(|| self.parent_predicates().into_iter().find_map(|p| p.get_function(name, types))).or_else(|| self.scope.scope()?.get_function(name, types))
     }
 
     fn types(&self) -> Vec<Rc<dyn Type>> {
@@ -942,7 +949,7 @@ impl Scope for Predicate {
     }
 
     fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-        self.scope.get_type(name)
+        self.scope.get_type(name).or_else(|| self.parent_predicates().into_iter().find_map(|p| p.get_type(name))).or_else(|| self.scope.scope()?.get_type(name))
     }
 
     fn predicates(&self) -> Vec<Rc<Predicate>> {
@@ -950,7 +957,7 @@ impl Scope for Predicate {
     }
 
     fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
-        self.scope.get_predicate(name)
+        self.scope.get_predicate(name).or_else(|| self.parent_predicates().into_iter().find_map(|p| p.get_predicate(name))).or_else(|| self.scope.scope()?.get_predicate(name))
     }
 }
 
