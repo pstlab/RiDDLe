@@ -66,6 +66,19 @@ pub enum Slot {
     AtomRef(AtomId),
 }
 
+impl PartialEq for Slot {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Slot::Primitive(p1), Slot::Primitive(p2)) => Rc::as_ptr(p1).cast::<()>() == Rc::as_ptr(p2).cast::<()>(),
+            (Slot::ObjectRef(id1), Slot::ObjectRef(id2)) => id1 == id2,
+            (Slot::AtomRef(id1), Slot::AtomRef(id2)) => id1 == id2,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Slot {}
+
 impl fmt::Display for Slot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

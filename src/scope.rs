@@ -705,9 +705,7 @@ impl Type for CommonClass {
     }
 
     fn new_instance(self: Rc<Self>) -> Slot {
-        let instance = self.core().new_object(self.clone());
-        self.add_instance(instance);
-        Slot::ObjectRef(instance)
+        Slot::ObjectRef(self.core().new_object(self.clone()))
     }
 }
 
@@ -902,6 +900,13 @@ impl Predicate {
 
     pub fn atoms(&self) -> Vec<AtomId> {
         self.atoms.borrow().clone()
+    }
+
+    pub fn add_atom(&self, atom: AtomId) {
+        self.atoms.borrow_mut().push(atom);
+        for parent in self.parent_predicates() {
+            parent.add_atom(atom);
+        }
     }
 
     fn parent_predicates(&self) -> Vec<Rc<Predicate>> {

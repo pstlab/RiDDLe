@@ -3,7 +3,7 @@ use crate::{
     env::{Atom, AtomId, BoolExpr, CommonEnv, Env, Object, ObjectId, Slot},
     language::{AtomKind, Disjunction, ResolutionConstraint, execute},
     parse_problem,
-    scope::{BoolType, Class, CommonScope, Field, Function, IntType, Predicate, RealType, Scope, StringType, Type, get_predicate_by_path},
+    scope::{BoolType, Class, CommonScope, Field, Function, IntType, Predicate, RealType, Scope, StringType, Type},
 };
 use std::{
     cell::RefCell,
@@ -107,6 +107,7 @@ impl CommonCore {
 
     pub fn new_object(&self, class: Rc<dyn Class>) -> ObjectId {
         let id = ObjectId(self.objects.borrow().len());
+        class.add_instance(id);
         self.objects.borrow_mut().push(Rc::new(Object::new(id, class)));
         id
     }
@@ -121,11 +122,7 @@ impl CommonCore {
 
     pub fn new_atom(&self, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Result<AtomId, RiddleError> {
         let id = AtomId(self.atoms.borrow().len());
-        predicate.atoms.borrow_mut().push(id);
-        for parent in predicate.parents() {
-            let parent_predicate = get_predicate_by_path(predicate.as_ref(), parent)?;
-            parent_predicate.atoms.borrow_mut().push(id);
-        }
+        predicate.add_atom(id);
         self.atoms.borrow_mut().push(Rc::new(Atom::new(id, predicate, kind, args, resolution_constraint)));
         Ok(id)
     }
