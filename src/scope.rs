@@ -369,10 +369,10 @@ impl Constructor {
                         Slot::AtomRef(atom_id) => Ok(self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type()),
                     })
                     .collect::<Result<Vec<_>, _>>()?;
-                let constructor = parent_class.constructor(&types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for parent class '{}' with specified argument types", parent_class.full_name())))?;
+                let constructor = parent_class.get_constructor(&types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for parent class '{}' with specified argument types", parent_class.full_name())))?;
                 constructor.call(object, exprs)?;
             } else {
-                let constructor = parent_class.constructor(&[]).ok_or_else(|| RiddleError::NotFound(format!("No-arg constructor for parent class '{}'", parent_class.full_name())))?;
+                let constructor = parent_class.get_constructor(&[]).ok_or_else(|| RiddleError::NotFound(format!("No-arg constructor for parent class '{}'", parent_class.full_name())))?;
                 constructor.call(object, vec![])?;
             }
         }
@@ -395,7 +395,7 @@ impl Constructor {
                             })
                             .collect::<Result<Vec<_>, _>>()?;
 
-                        if let Some(constructor) = field_class.constructor(&types) {
+                        if let Some(constructor) = field_class.get_constructor(&types) {
                             let instances = field_class.instances();
                             if instances.is_empty() {
                                 return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", field.name(), field_class.full_name())));
@@ -649,7 +649,7 @@ impl Scope for Function {
 pub trait Class: Type + Scope {
     fn parents(&self) -> &[Vec<String>];
     fn constructors(&self) -> Vec<Rc<Constructor>>;
-    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>>;
+    fn get_constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>>;
     fn instances(&self) -> Vec<ObjectId>;
     fn add_instance(&self, instance: ObjectId);
 }
@@ -764,7 +764,7 @@ impl Class for CommonClass {
         self.constructors.borrow().clone()
     }
 
-    fn constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>> {
+    fn get_constructor(&self, args: &[Rc<dyn Type>]) -> Option<Rc<Constructor>> {
         self.constructors
             .borrow()
             .iter()
@@ -772,12 +772,7 @@ impl Class for CommonClass {
                 if c.args().len() != args.len() {
                     return false;
                 }
-                for ((arg_type, _), tp) in c.args().iter().zip(args.iter()) {
-                    if !tp.full_name().split('.').eq(arg_type.iter().map(|s| s.as_str())) {
-                        return false;
-                    }
-                }
-                true
+                c.args().iter().zip(args.iter()).all(|((arg_type, _), tp)| get_type_by_path(self, arg_type).ok().is_some_and(|t| is_assignable_from(&t, tp)))
             })
             .cloned()
     }

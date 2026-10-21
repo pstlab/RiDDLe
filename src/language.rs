@@ -570,7 +570,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                     Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.var_type()),
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let constructor = class.constructor(&arg_types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with argument types ({}) not found", class.full_name(), arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))?;
+            let constructor = class.get_constructor(&arg_types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with argument types ({}) not found", class.full_name(), arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))?;
             let object = class.new_instance();
             let object = match object {
                 Slot::ObjectRef(obj_id) => Ok(obj_id),
