@@ -83,13 +83,12 @@ impl CommonCore {
     /// and environment.
     ///
     /// Returns an error if parsing or execution fails.
-    pub fn read(&self, riddle: &str) -> Result<(), RiddleError> {
+    pub fn read(self: &Rc<Self>, riddle: &str) -> Result<(), RiddleError> {
         let mut problem = parse_problem(riddle)?;
         let statments = std::mem::take(&mut problem.statements);
-        self.scope.clone().add_problem(problem);
-        let scope: Rc<dyn Scope> = self.scope.clone();
+        let scope: Rc<dyn Scope> = self.clone();
         for stmt in statments {
-            execute(&scope, self.env.clone(), &stmt)?;
+            execute(&scope, self.clone(), &stmt)?;
         }
         Ok(())
     }
