@@ -56,6 +56,7 @@ pub struct CommonCore {
     scope: Rc<CommonScope>,
     env: Rc<CommonEnv>,
     objects: RefCell<Vec<Rc<Object>>>,
+    object_names: RefCell<Vec<Option<String>>>,
     atoms: RefCell<Vec<Rc<Atom>>>,
 }
 
@@ -65,6 +66,7 @@ impl CommonCore {
             scope: Rc::new(CommonScope::new(core.clone(), None)),
             env: Rc::new(CommonEnv::new(None)),
             objects: RefCell::new(Vec::new()),
+            object_names: RefCell::new(Vec::new()),
             atoms: RefCell::new(Vec::new()),
         });
         c_core.add_type(Rc::new(BoolType::new(core.clone())));
@@ -105,10 +107,15 @@ impl CommonCore {
         self.objects.borrow().get(*id).cloned()
     }
 
+    pub fn get_object_name(&self, id: ObjectId) -> Option<String> {
+        self.object_names.borrow().get(*id).cloned().flatten()
+    }
+
     pub fn new_object(&self, class: Rc<dyn Class>) -> ObjectId {
         let id = ObjectId(self.objects.borrow().len());
         class.add_instance(id);
         self.objects.borrow_mut().push(Rc::new(Object::new(id, class)));
+        self.object_names.borrow_mut().push(None);
         id
     }
 
@@ -184,6 +191,9 @@ impl Env for CommonCore {
     }
 
     fn set(&self, name: String, value: Slot) {
+        if let Slot::ObjectRef(id) = value {
+            self.object_names.borrow_mut()[*id] = Some(name.clone());
+        }
         self.env.set(name, value);
     }
 }
