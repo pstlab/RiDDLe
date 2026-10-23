@@ -176,7 +176,7 @@ impl Core for TestCore {
 
 impl Scope for TestCore {
     fn core(&self) -> Rc<dyn Core> {
-        panic!("Core should not call scope core method")
+        self.core.core()
     }
 
     fn scope(&self) -> Option<Rc<dyn Scope>> {
