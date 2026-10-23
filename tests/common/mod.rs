@@ -3,7 +3,7 @@
 use core::fmt;
 use riddle::{
     RiddleError,
-    core::{CommonCore, Core},
+    core::{CommonCore, Core, read},
     env::{Atom, AtomId, BoolExpr, Env, Object, ObjectId, Slot, Var},
     language::{AtomKind, Disjunction, ResolutionConstraint},
     scope::{Class, Field, Function, Predicate, Scope, Type, arith_type, get_type_by_path},
@@ -91,16 +91,13 @@ impl TestCore {
                 CommonCore::new(core)
             },
         });
-        slv.core.read("real origin, horizon; origin >= 0.0; origin <= horizon;").expect("Failed to read core definitions");
-        slv.core.read("predicate Impulse(real at) { at >= origin; at <= horizon; }").expect("Failed to read core definitions");
-        slv.core.read("predicate Interval(real start, real duration, real end) { start >= origin; end <= horizon; duration == end - start; }").expect("Failed to read core definitions");
-        slv.core.read("class StateVariable { }").expect("Failed to read core definitions");
-        slv.core.read("class ReusableResource { real capacity; ReusableResource(real capacity) : capacity(capacity) { } predicate Use(real amount) : Interval { amount >= 0.0; amount <= capacity; } }").expect("Failed to read core definitions");
+        let core: Rc<dyn Core> = slv.clone();
+        read(core.clone(), "real origin, horizon; origin >= 0.0; origin <= horizon;").expect("Failed to read core definitions");
+        read(core.clone(), "predicate Impulse(real at) { at >= origin; at <= horizon; }").expect("Failed to read core definitions");
+        read(core.clone(), "predicate Interval(real start, real duration, real end) { start >= origin; end <= horizon; duration == end - start; }").expect("Failed to read core definitions");
+        read(core.clone(), "class StateVariable { }").expect("Failed to read core definitions");
+        read(core, "class ReusableResource { real capacity; ReusableResource(real capacity) : capacity(capacity) { } predicate Use(real amount) : Interval { amount >= 0.0; amount <= capacity; } }").expect("Failed to read core definitions");
         slv
-    }
-
-    pub(crate) fn read(&self, script: &str) -> Result<(), RiddleError> {
-        self.core.read(script)
     }
 }
 

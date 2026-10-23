@@ -1,18 +1,19 @@
-use crate::common::TestCore;
-use std::{fs::read_to_string, path::PathBuf};
-
 mod common;
+
+use crate::common::TestCore;
+use riddle::core::{Core, read};
+use std::{fs::read_to_string, path::PathBuf, rc::Rc};
 
 macro_rules! test_riddle {
     ($name:ident, $($path:expr),+) => {
         #[test]
         fn $name() {
-            let solver = TestCore::new();
+            let solver: Rc<dyn Core> = TestCore::new();
             $(
                 let mut full_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
                 full_path.push($path);
                 let content = read_to_string(&full_path).expect(&format!("Failed to read file: {}", $path));
-                solver.read(&content).expect("Failed to read problem");
+                read(solver.clone(), &content).expect("Failed to read problem");
             )+
         }
     };
