@@ -152,6 +152,18 @@ impl Env for CommonEnv {
     }
 }
 
+#[macro_export]
+macro_rules! delegate_env {
+    ($ty:ty, $($field:tt)+) => {
+        impl Env for $ty {
+            fn parent(&self) -> Option<Rc<dyn Env>> { self.$($field)+.parent() }
+            fn get_slots(&self) -> HashMap<String, Slot> { self.$($field)+.get_slots() }
+            fn get(&self, name: &str) -> Option<Slot> { self.$($field)+.get(name) }
+            fn set(&self, name: String, value: Slot) { self.$($field)+.set(name, value) }
+        }
+    };
+}
+
 pub enum BoolExpr {
     Term { var_type: Weak<dyn Type>, term: Slot },
     Not { var_type: Weak<dyn Type>, term: Rc<BoolExpr> },
@@ -200,23 +212,7 @@ impl Var for Object {
     }
 }
 
-impl Env for Object {
-    fn parent(&self) -> Option<Rc<dyn Env>> {
-        self.env.parent.clone()
-    }
-
-    fn get_slots(&self) -> HashMap<String, Slot> {
-        self.env.get_slots()
-    }
-
-    fn get(&self, name: &str) -> Option<Slot> {
-        self.env.get(name)
-    }
-
-    fn set(&self, name: String, value: Slot) {
-        self.env.set(name, value);
-    }
-}
+delegate_env!(Object, env);
 
 pub struct Atom {
     id: AtomId,
@@ -272,23 +268,7 @@ impl Var for Atom {
     }
 }
 
-impl Env for Atom {
-    fn parent(&self) -> Option<Rc<dyn Env>> {
-        self.env.parent.clone()
-    }
-
-    fn get_slots(&self) -> HashMap<String, Slot> {
-        self.env.get_slots()
-    }
-
-    fn get(&self, name: &str) -> Option<Slot> {
-        self.env.get(name)
-    }
-
-    fn set(&self, name: String, value: Slot) {
-        self.env.set(name, value);
-    }
-}
+delegate_env!(Atom, env);
 
 fn push_negations(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {

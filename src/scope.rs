@@ -306,6 +306,26 @@ impl Scope for CommonScope {
     }
 }
 
+#[macro_export]
+macro_rules! delegate_scope {
+    ($ty:ty, $($field:tt)+) => {
+        impl Scope for $ty {
+            fn core(&self) -> Rc<dyn Core> { self.$($field)+.core() }
+            fn scope(&self) -> Option<Rc<dyn Scope>> { self.$($field)+.scope() }
+            fn fields(&self) -> Vec<Rc<Field>> { self.$($field)+.fields() }
+            fn get_field(&self, name: &str) -> Option<Rc<Field>> { self.$($field)+.get_field(name) }
+            fn functions(&self) -> Vec<Rc<Function>> { self.$($field)+.functions() }
+            fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+                self.$($field)+.get_function(name, types)
+            }
+            fn types(&self) -> Vec<Rc<dyn Type>> { self.$($field)+.types() }
+            fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> { self.$($field)+.get_type(name) }
+            fn predicates(&self) -> Vec<Rc<Predicate>> { self.$($field)+.predicates() }
+            fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> { self.$($field)+.get_predicate(name) }
+        }
+    };
+}
+
 /// Executable constructor declaration.
 pub struct Constructor {
     scope: Rc<CommonScope>,
@@ -476,47 +496,7 @@ impl Constructor {
     }
 }
 
-impl Scope for Constructor {
-    fn core(&self) -> Rc<dyn Core> {
-        self.scope.core()
-    }
-
-    fn scope(&self) -> Option<Rc<dyn Scope>> {
-        self.scope.scope()
-    }
-
-    fn fields(&self) -> Vec<Rc<Field>> {
-        self.scope.fields()
-    }
-
-    fn get_field(&self, name: &str) -> Option<Rc<Field>> {
-        self.scope.get_field(name)
-    }
-
-    fn functions(&self) -> Vec<Rc<Function>> {
-        self.scope.functions()
-    }
-
-    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, types)
-    }
-
-    fn types(&self) -> Vec<Rc<dyn Type>> {
-        self.scope.types()
-    }
-
-    fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-        self.scope.get_type(name)
-    }
-
-    fn predicates(&self) -> Vec<Rc<Predicate>> {
-        self.scope.predicates()
-    }
-
-    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
-        self.scope.get_predicate(name)
-    }
-}
+delegate_scope!(Constructor, scope);
 
 impl fmt::Display for Constructor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -603,47 +583,7 @@ impl Function {
     }
 }
 
-impl Scope for Function {
-    fn core(&self) -> Rc<dyn Core> {
-        self.scope.core()
-    }
-
-    fn scope(&self) -> Option<Rc<dyn Scope>> {
-        self.scope.scope()
-    }
-
-    fn fields(&self) -> Vec<Rc<Field>> {
-        self.scope.fields()
-    }
-
-    fn get_field(&self, name: &str) -> Option<Rc<Field>> {
-        self.scope.get_field(name)
-    }
-
-    fn functions(&self) -> Vec<Rc<Function>> {
-        self.scope.functions()
-    }
-
-    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-        self.scope.get_function(name, types)
-    }
-
-    fn types(&self) -> Vec<Rc<dyn Type>> {
-        self.scope.types()
-    }
-
-    fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-        self.scope.get_type(name)
-    }
-
-    fn predicates(&self) -> Vec<Rc<Predicate>> {
-        self.scope.predicates()
-    }
-
-    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
-        self.scope.get_predicate(name)
-    }
-}
+delegate_scope!(Function, scope);
 
 /// Class-specific API surface layered on top of type and scope behavior.
 pub trait Class: Type + Scope {
