@@ -180,6 +180,70 @@ impl Env for CommonCore {
     }
 }
 
+pub trait HasCommonCore {
+    fn common_core(&self) -> &CommonCore;
+}
+
+impl<T: HasCommonCore> Scope for T {
+    fn core(&self) -> Rc<dyn Core> {
+        self.common_core().core()
+    }
+
+    fn scope(&self) -> Option<Rc<dyn Scope>> {
+        None
+    }
+
+    fn fields(&self) -> Vec<Rc<Field>> {
+        self.common_core().fields()
+    }
+
+    fn get_field(&self, name: &str) -> Option<Rc<Field>> {
+        self.common_core().get_field(name)
+    }
+
+    fn functions(&self) -> Vec<Rc<Function>> {
+        self.common_core().functions()
+    }
+
+    fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
+        self.common_core().get_function(name, types)
+    }
+
+    fn types(&self) -> Vec<Rc<dyn Type>> {
+        self.common_core().types()
+    }
+
+    fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
+        self.common_core().get_type(name)
+    }
+
+    fn predicates(&self) -> Vec<Rc<Predicate>> {
+        self.common_core().predicates()
+    }
+
+    fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
+        self.common_core().get_predicate(name)
+    }
+}
+
+impl<T: HasCommonCore> Env for T {
+    fn parent(&self) -> Option<Rc<dyn Env>> {
+        None
+    }
+
+    fn get_slots(&self) -> HashMap<String, Slot> {
+        self.common_core().get_slots()
+    }
+
+    fn get(&self, name: &str) -> Option<Slot> {
+        self.common_core().get(name)
+    }
+
+    fn set(&self, name: String, value: Slot) {
+        self.common_core().set(name, value);
+    }
+}
+
 /// Executes a RiDDLe problem in the context of the given core, registering
 /// the parsed problem metadata in the core scope, and executing each statement
 /// in order using the core scope and environment.
@@ -304,63 +368,9 @@ mod tests {
         }
     }
 
-    impl Scope for TestCore {
-        fn core(&self) -> Rc<dyn Core> {
-            self.core.core()
-        }
-
-        fn scope(&self) -> Option<Rc<dyn Scope>> {
-            None
-        }
-
-        fn fields(&self) -> Vec<Rc<Field>> {
-            self.core.fields()
-        }
-
-        fn get_field(&self, name: &str) -> Option<Rc<Field>> {
-            self.core.get_field(name)
-        }
-
-        fn functions(&self) -> Vec<Rc<Function>> {
-            self.core.functions()
-        }
-
-        fn get_function(&self, name: &str, types: &[Rc<dyn Type>]) -> Option<Rc<Function>> {
-            self.core.get_function(name, types)
-        }
-
-        fn types(&self) -> Vec<Rc<dyn Type>> {
-            self.core.types()
-        }
-
-        fn get_type(&self, name: &str) -> Option<Rc<dyn Type>> {
-            self.core.get_type(name)
-        }
-
-        fn predicates(&self) -> Vec<Rc<Predicate>> {
-            self.core.predicates()
-        }
-
-        fn get_predicate(&self, name: &str) -> Option<Rc<Predicate>> {
-            self.core.get_predicate(name)
-        }
-    }
-
-    impl Env for TestCore {
-        fn parent(&self) -> Option<Rc<dyn Env>> {
-            None
-        }
-
-        fn get_slots(&self) -> HashMap<String, Slot> {
-            self.core.get_slots()
-        }
-
-        fn get(&self, name: &str) -> Option<Slot> {
-            self.core.get(name)
-        }
-
-        fn set(&self, name: String, value: Slot) {
-            self.core.set(name, value);
+    impl HasCommonCore for TestCore {
+        fn common_core(&self) -> &CommonCore {
+            &self.core
         }
     }
 
