@@ -76,6 +76,24 @@ impl CommonCore {
         c_core
     }
 
+    /// Parses and executes a RiDDLe problem in this core context.
+    ///
+    /// The parsed problem metadata is registered in the current scope,
+    /// then each statement is executed in order using this core scope
+    /// and environment.
+    ///
+    /// Returns an error if parsing or execution fails.
+    pub fn read(&self, riddle: &str) -> Result<(), RiddleError> {
+        let mut problem = parse_problem(riddle)?;
+        let statments = std::mem::take(&mut problem.statements);
+        self.scope.clone().add_problem(problem);
+        let scope: Rc<dyn Scope> = self.scope.clone();
+        for stmt in statments {
+            execute(&scope, self.env.clone(), &stmt)?;
+        }
+        Ok(())
+    }
+
     /// Registers a type in the core type table under its declared name.
     pub fn add_type(&self, tp: Rc<dyn Type>) {
         self.scope.types.borrow_mut().insert(tp.name().to_string(), tp);
@@ -140,21 +158,6 @@ impl Env for CommonCore {
     }
 }
 
-/// Executes a RiDDLe problem in the context of the given core, registering
-/// the parsed problem metadata in the core scope, and executing each statement
-/// in order using the core scope and environment.
-///
-/// Returns an error if parsing or execution fails.
-pub fn read(core: Rc<dyn Core>, riddle: &str) -> Result<(), RiddleError> {
-    let mut problem = parse_problem(riddle)?;
-    let statments = std::mem::take(&mut problem.statements);
-    let scope: Rc<dyn Scope> = core.clone();
-    for stmt in statments {
-        execute(&scope, core.clone(), &stmt)?;
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,6 +191,10 @@ mod tests {
                     CommonCore::new(core)
                 },
             })
+        }
+
+        fn read(&self, riddle: &str) -> Result<(), RiddleError> {
+            self.core.read(riddle)
         }
     }
 
@@ -278,7 +285,7 @@ mod tests {
 
     #[test]
     fn read_problem() {
-        let core: Rc<dyn Core> = TestCore::new();
-        read(core, "bool a, b, c; (a & b) | c;").expect("Failed to read problem with boolean variables and expression");
+        let core = TestCore::new();
+        core.read("bool a, b, c; (a & b) | c;").expect("Failed to read problem with boolean variables and expression");
     }
 }
