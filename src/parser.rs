@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
     language::{AtomKind, ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, ResolutionConstraint, Statement},
-    lexer::{Lexer, LexerError, Location, Token},
+    lexer::{Lexer, Location, Token},
 };
 use std::{collections::VecDeque, iter::Peekable};
 
@@ -15,7 +15,7 @@ impl<'a> Parser<'a> {
         Parser { lexer: lexer.peekable(), lookahead: VecDeque::new() }
     }
 
-    fn peek(&mut self, n: usize) -> Result<Option<&(Location, Token, Location)>, LexerError> {
+    fn peek(&mut self, n: usize) -> Result<Option<&(Location, Token, Location)>, RiddleError> {
         while self.lookahead.len() <= n {
             if let Some(res) = self.lexer.next() {
                 let token_tuple = res?;
@@ -27,12 +27,12 @@ impl<'a> Parser<'a> {
         Ok(self.lookahead.get(n))
     }
 
-    fn next(&mut self) -> Result<Option<(Location, Token, Location)>, LexerError> {
-        if let Some(token_tuple) = self.lookahead.pop_front() { Ok(Some(token_tuple)) } else { self.lexer.next().transpose() }
+    fn next(&mut self) -> Result<Option<(Location, Token, Location)>, RiddleError> {
+        if let Some(token_tuple) = self.lookahead.pop_front() { Ok(Some(token_tuple)) } else { Ok(self.lexer.next().transpose()?) }
     }
 
     fn expect(&mut self, expected: Token) -> Result<(Location, Token, Location), RiddleError> {
-        let next_token = self.next().map_err(|e| RiddleError::RuntimeError(format!("Lexer Error: {:?}", e)))?;
+        let next_token = self.next()?;
 
         match next_token {
             Some((start, token, end)) if token == expected => Ok((start, token, end)),
@@ -361,6 +361,12 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_predicate(&mut self) -> Result<PredicateDef, RiddleError> {
         self.expect(Token::Predicate)?;
+        let invariant = if let Ok(Some((_, Token::Bang, _))) = self.peek(0) {
+            self.next()?; // consume '!'
+            true
+        } else {
+            false
+        };
         let name = match self.next() {
             Ok(Some((_, Token::Identifier(name), _))) => name,
             _ => return Err(RiddleError::RuntimeError(String::from("Expected identifier after 'predicate'"))),
@@ -432,7 +438,7 @@ impl<'a> Parser<'a> {
             statements.push(self.parse_statement()?);
         }
         self.expect(Token::RBrace)?;
-        Ok(PredicateDef { name, args, parents, statements })
+        Ok(PredicateDef { name, invariant, args, parents, statements })
     }
 
     pub(crate) fn parse_statement(&mut self) -> Result<Statement, RiddleError> {

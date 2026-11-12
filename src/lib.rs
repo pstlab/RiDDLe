@@ -1,6 +1,6 @@
 use crate::{
     language::{ClassDef, ConstructorDef, Expr, FunctionDef, PredicateDef, ProblemDef, Statement},
-    lexer::Lexer,
+    lexer::{Lexer, LexerError},
     parser::Parser,
 };
 use ::core::fmt;
@@ -34,6 +34,12 @@ impl fmt::Display for RiddleError {
             RiddleError::InconsistencyError(msg) => write!(f, "Inconsistency error: {}", msg),
             RiddleError::RuntimeError(msg) => write!(f, "Runtime error: {}", msg),
         }
+    }
+}
+
+impl From<LexerError> for RiddleError {
+    fn from(err: LexerError) -> Self {
+        RiddleError::RuntimeError(format!("Lexer Error: {:?}", err))
     }
 }
 

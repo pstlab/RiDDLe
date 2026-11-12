@@ -100,6 +100,7 @@ impl fmt::Display for FunctionDef {
 
 pub struct PredicateDef {
     pub name: String,
+    pub invariant: bool,
     pub args: Vec<(Vec<String>, String)>,
     pub parents: Vec<Vec<String>>,
     pub statements: Vec<Statement>,
@@ -109,7 +110,8 @@ impl fmt::Display for PredicateDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "predicate {}({}) {} {{\n{}\n}}",
+            "predicate{}{}({}) {} {{\n{}\n}}",
+            if self.invariant { "! " } else { " " },
             self.name,
             self.args.iter().map(|(t, n)| format!("{} {}", t.join("."), n)).collect::<Vec<_>>().join(", "),
             if self.parents.is_empty() { String::new() } else { format!(": {}", self.parents.iter().map(|p| p.join(".")).collect::<Vec<_>>().join(", ")) },
@@ -350,7 +352,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                     let val = evaluate(scp.as_ref(), env.clone(), e)?;
                     Ok((n.clone(), val))
                 })
-                .collect::<Result<_, _>>()?;
+                .collect::<Result<_, RiddleError>>()?;
             if let Some(tau) = tau {
                 args.insert(String::from("tau"), tau);
             } else if let Some(tau) = env.get("tau") {
@@ -444,7 +446,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                     Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.var_type()),
                     Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.var_type()),
                 })
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<Result<Vec<_>, RiddleError>>()?;
             let (last, rest) = name.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty function path".into()))?;
             if rest.is_empty() {
                 if let Some(function) = scp.get_function(last, &arg_types) {
@@ -569,7 +571,7 @@ pub fn evaluate(scp: &dyn Scope, env: Rc<dyn Env>, expr: &Expr) -> Result<Slot, 
                     Slot::ObjectRef(obj_id) => Ok(scp.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.var_type()),
                     Slot::AtomRef(atom_id) => Ok(scp.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.var_type()),
                 })
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<Result<Vec<_>, RiddleError>>()?;
             let constructor = class.get_constructor(&arg_types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for class '{}' with argument types ({}) not found", class.full_name(), arg_types.iter().map(|t| t.full_name()).collect::<Vec<_>>().join(", "))))?;
             let object = class.new_instance();
             let object = match object {

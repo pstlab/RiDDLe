@@ -388,7 +388,7 @@ impl Constructor {
                         Slot::ObjectRef(obj_id) => Ok(self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type()),
                         Slot::AtomRef(atom_id) => Ok(self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type()),
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, RiddleError>>()?;
                 let constructor = parent_class.get_constructor(&types).ok_or_else(|| RiddleError::NotFound(format!("Constructor for parent class '{}' with specified argument types", parent_class.full_name())))?;
                 constructor.call(object, exprs)?;
             } else {
@@ -413,7 +413,7 @@ impl Constructor {
                                 Slot::ObjectRef(obj_id) => Ok(self.scope.core().get_object(*obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {}", *obj_id)))?.var_type()),
                                 Slot::AtomRef(atom_id) => Ok(self.scope.core().get_atom(*atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {}", *atom_id)))?.var_type()),
                             })
-                            .collect::<Result<Vec<_>, _>>()?;
+                            .collect::<Result<Vec<_>, RiddleError>>()?;
 
                         if let Some(constructor) = field_class.get_constructor(&types) {
                             let instances = field_class.instances();
