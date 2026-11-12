@@ -787,6 +787,7 @@ fn is_subclass_of(current_class: Rc<dyn Class>, target_full_name: &str) -> bool 
 pub struct Predicate {
     scope: CommonScope,
     name: String,
+    invariant: bool,
     parents: Vec<Vec<String>>,
     args: Vec<(Vec<String>, String)>,
     statements: Vec<Statement>,
@@ -798,12 +799,21 @@ impl Predicate {
     pub fn new(scope: Weak<dyn Scope>, mut predicate: PredicateDef) -> Rc<Self> {
         Rc::new(Self {
             name: std::mem::take(&mut predicate.name),
+            invariant: predicate.invariant,
             parents: std::mem::take(&mut predicate.parents),
             args: std::mem::take(&mut predicate.args),
             statements: std::mem::take(&mut predicate.statements),
             scope: CommonScope::from_predicate(scope, predicate),
             atoms: RefCell::new(Vec::new()),
         })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn is_invariant(&self) -> bool {
+        self.invariant
     }
 
     pub fn parents(&self) -> &[Vec<String>] {
