@@ -278,7 +278,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 } else if let Some(class) = fld_tp.as_class() {
                     let instances = class.instances();
                     if instances.is_empty() {
-                        return Err(RiddleError::RuntimeError(format!("No instances found for field '{}' of type '{}'", name, class.full_name())));
+                        return Err(RiddleError::InconsistencyError(format!("No instances found for field '{}' of type '{}'", name, class.full_name())));
                     } else if instances.len() == 1 {
                         env.set(name.clone(), Slot::ObjectRef(instances[0]));
                     } else {
@@ -364,7 +364,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                         if let Some(class) = arg_tp.as_class() {
                             let instances = class.instances();
                             if instances.is_empty() {
-                                return Err(RiddleError::RuntimeError(format!("No instances found for argument '{}' of type '{}'", name, class.full_name())));
+                                return Err(RiddleError::InconsistencyError(format!("No instances found for argument '{}' of type '{}'", name, class.full_name())));
                             } else if instances.len() == 1 {
                                 args.insert(name.clone(), Slot::ObjectRef(instances[0]));
                             } else {
