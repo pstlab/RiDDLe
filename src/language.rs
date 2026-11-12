@@ -1,7 +1,7 @@
 use crate::{
     RiddleError,
     env::{BoolExpr, CommonEnv, Env, Slot, Var, get_var_by_path},
-    scope::{Scope, Type, get_type_by_path, is_assignable_from},
+    scope::{Scope, Type, get_predicate_by_path, get_type_by_path, is_assignable_from},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -362,7 +362,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
             while let Some(pred) = pred_hierarchy.pop_front() {
                 for (arg_type, name) in pred.args() {
                     if !args.contains_key(name) {
-                        let arg_tp = get_type_by_path(scp.as_ref(), arg_type)?;
+                        let arg_tp = get_type_by_path(pred.as_ref(), arg_type)?;
                         if let Some(class) = arg_tp.as_class() {
                             let instances = class.instances();
                             if instances.is_empty() {
@@ -378,17 +378,13 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                     }
                 }
                 for parent_path in pred.parents() {
-                    let (predicate_name, class_path) = parent_path.split_last().ok_or_else(|| RiddleError::RuntimeError("Empty parent predicate path".into()))?;
-                    let parent_predicate = if class_path.is_empty() {
-                        scp.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in parent path", predicate_name)))?
-                    } else {
-                        let class = get_type_by_path(scp.as_ref(), class_path)?.as_class().ok_or_else(|| RiddleError::NotAClass(format!("Type '{}' in parent path", class_path.join("."))))?;
-                        class.get_predicate(predicate_name).ok_or_else(|| RiddleError::NotFound(format!("Predicate '{}' in class '{}'", predicate_name, class.full_name())))?
-                    };
-                    pred_hierarchy.push_back(parent_predicate);
+                    let parent_pred = get_predicate_by_path(pred.as_ref(), parent_path)?;
+                    pred_hierarchy.push_back(parent_pred);
                 }
             }
-            let atom = scp.core().new_atom(predicate, *kind, args, *resolution_constraint)?;
+            let atom = scp.core().new_atom(predicate.clone(), *kind, args, *resolution_constraint)?;
+            let atom_rc = scp.core().get_atom(atom).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom)))?;
+            predicate.call_invariants(atom_rc)?;
             env.set(name.clone(), Slot::AtomRef(atom));
             Ok(())
         }

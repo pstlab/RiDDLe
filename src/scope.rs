@@ -828,17 +828,34 @@ impl Predicate {
         &self.statements
     }
 
-    /// Executes predicate statements against a concrete atom.
+    /// Executes `predicate!` (invariant) statements in the hierarchy upon atom creation.
+    pub fn call_invariants(self: Rc<Self>, atom: Rc<Atom>) -> Result<(), RiddleError> {
+        for parent in &self.parents {
+            let parent_predicate = get_predicate_by_path(&self.scope, parent)?;
+            parent_predicate.call_invariants(atom.clone())?;
+        }
+        if self.invariant {
+            let scope: Rc<dyn Scope> = self.clone();
+            let atom_env = Rc::new(CommonEnv::new(Some(atom)));
+            for stmt in &self.statements {
+                execute(&scope, atom_env.clone(), stmt)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Executes causal `predicate` (non-invariant) statements in the hierarchy when expanding a goal.
     pub fn call(self: Rc<Self>, atom: Rc<Atom>) -> Result<(), RiddleError> {
-        // we first execute parent predicates in declaration order, passing the same atom..
         for parent in &self.parents {
             let parent_predicate = get_predicate_by_path(&self.scope, parent)?;
             parent_predicate.call(atom.clone())?;
         }
-        let scope: Rc<dyn Scope> = self.clone();
-        let atom_env = Rc::new(CommonEnv::new(Some(atom.clone())));
-        for stmt in &self.statements {
-            execute(&scope, atom_env.clone(), stmt)?;
+        if !self.invariant {
+            let scope: Rc<dyn Scope> = self.clone();
+            let atom_env = Rc::new(CommonEnv::new(Some(atom)));
+            for stmt in &self.statements {
+                execute(&scope, atom_env.clone(), stmt)?;
+            }
         }
         Ok(())
     }
