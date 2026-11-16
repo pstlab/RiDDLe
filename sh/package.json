@@ -1,0 +1,34 @@
+{
+  "name": "riddle-lang",
+  "displayName": "RiDDLe (Rational Domain Definition Language)",
+  "description": "Syntax highlighting for RiDDLe timeline-based planning language",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "riddle",
+        "aliases": [
+          "RiDDLe",
+          "RIDDLE",
+          "riddle"
+        ],
+        "extensions": [
+          ".rdl",
+          ".rddl",
+          ".riddle"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "riddle",
+        "scopeName": "source.riddle",
+        "path": "./riddle.tmLanguage.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "RiDDLe",
+  "scopeName": "source.riddle",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#predicate-declarations"
+    },
+    {
+      "include": "#class-declarations"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#builtin-classes"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#named-arguments"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.riddle",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.riddle",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.riddle",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.riddle",
+          "match": "\\\\(\"|\\\\)"
+        }
+      ]
+    },
+    "predicate-declarations": {
+      "match": "\\b(predicate)(!)?\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "storage.type.predicate.riddle"
+        },
+        "2": {
+          "name": "keyword.operator.invariant.riddle"
+        },
+        "3": {
+          "name": "entity.name.function.predicate.riddle"
+        }
+      }
+    },
+    "class-declarations": {
+      "match": "\\b(class)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "storage.type.class.riddle"
+        },
+        "2": {
+          "name": "entity.name.type.class.riddle"
+        }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.riddle",
+          "match": "\\b(for|or|return)\\b"
+        },
+        {
+          "name": "storage.modifier.token.riddle",
+          "match": "\\b(fact|goal)\\b"
+        },
+        {
+          "name": "keyword.operator.new.riddle",
+          "match": "\\b(new)\\b"
+        },
+        {
+          "name": "variable.language.this.riddle",
+          "match": "\\b(this)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.primitive.riddle",
+          "match": "\\b(bool|int|real|string|void)\\b"
+        }
+      ]
+    },
+    "builtin-classes": {
+      "patterns": [
+        {
+          "name": "support.class.timeline.riddle",
+          "match": "\\b(StateVariable|ReusableResource|ConsumableResource|Interval|Impulse)\\b"
+        },
+        {
+          "name": "support.variable.temporal.riddle",
+          "match": "\\b(origin|horizon|start|end|duration|at|capacity|initial_amount)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.riddle",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+    "named-arguments": {
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*:(?!:)",
+      "captures": {
+        "1": {
+          "name": "variable.parameter.named.riddle"
+        }
+      }
+    },
+    "functions": {
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+      "captures": {
+        "1": {
+          "name": "entity.name.function.riddle"
+        }
+      }
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.riddle",
+          "match": "(?:\\b[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.unification.riddle",
+          "match": "[!?](?=\\s*;)"
+        },
+        {
+          "name": "keyword.operator.comparison.riddle",
+          "match": "==|!=|>=|<=|>|<"
+        },
+        {
+          "name": "keyword.operator.logical.riddle",
+          "match": "[!&|^]"
+        },
+        {
+          "name": "keyword.operator.arithmetic.riddle",
+          "match": "[+\\-*/=]"
+        }
+      ]
+    }
+  }
+}
