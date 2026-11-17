@@ -285,8 +285,8 @@ delegate_env!(Atom, env);
 fn push_negations(expr: &Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {
         BoolExpr::Not { term, .. } => push_inverted(term),
-        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: terms.iter().map(|t| push_negations(t)).collect() }),
-        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(|t| push_negations(t)).collect() }),
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: terms.iter().map(push_negations).collect() }),
+        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(push_negations).collect() }),
         _ => expr.clone(),
     }
 }
@@ -298,10 +298,10 @@ fn push_inverted(expr: &Rc<BoolExpr>) -> Rc<BoolExpr> {
         BoolExpr::Not { term, .. } => push_negations(term),
 
         // De Morgan: Not(And(A, B)) => Or(Not(A), Not(B))
-        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(|t| push_inverted(t)).collect() }),
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(push_inverted).collect() }),
 
         // De Morgan: Not(Or(A, B)) => And(Not(A), Not(B))
-        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: terms.iter().map(|t| push_inverted(t)).collect() }),
+        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: terms.iter().map(push_inverted).collect() }),
 
         BoolExpr::Leq { var_type, left, right } => Rc::new(BoolExpr::Lt { var_type: var_type.clone(), left: right.clone(), right: left.clone() }),
         BoolExpr::Lt { var_type, left, right } => Rc::new(BoolExpr::Leq { var_type: var_type.clone(), left: right.clone(), right: left.clone() }),
