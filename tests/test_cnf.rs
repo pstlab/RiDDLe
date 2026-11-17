@@ -20,7 +20,7 @@ fn test_cnf_distribution() {
     let expr = Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: vec![v1.clone(), v2_and_v3] });
 
     // The CNF of (v1 OR (v2 AND v3)) should be ((v1 OR v2) AND (v1 OR v3))
-    let cnf = to_cnf(expr);
+    let cnf = to_cnf(&expr);
 
     if let BoolExpr::And { terms, .. } = cnf.as_ref() {
         assert_eq!(terms.len(), 2, "CNF should have two clauses");
@@ -50,7 +50,7 @@ fn test_cnf_with_negation() {
     let expr = Rc::new(BoolExpr::Not { var_type: var_type.clone(), term: inner_and });
 
     // The CNF of NOT (v1 AND (v2 OR v3)) should be (NOT v1 OR NOT v2) AND (NOT v1 OR NOT v3)
-    let cnf = to_cnf(expr);
+    let cnf = to_cnf(&expr);
 
     assert!(matches!(cnf.as_ref(), BoolExpr::And { .. }));
     if let BoolExpr::And { terms, .. } = cnf.as_ref() {
@@ -76,7 +76,7 @@ fn test_cnf_flattening() {
     let expr = Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: vec![v1, nested] });
 
     // The CNF of (v1 AND (v2 AND v3)) should be (v1 AND v2 AND v3) after flattening
-    let cnf = to_cnf(expr);
+    let cnf = to_cnf(&expr);
 
     if let BoolExpr::And { terms, .. } = cnf.as_ref() {
         assert_eq!(terms.len(), 3, "CNF should have three clauses after flattening");

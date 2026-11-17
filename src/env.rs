@@ -22,6 +22,12 @@ impl From<usize> for ObjectId {
     }
 }
 
+impl From<ObjectId> for usize {
+    fn from(obj_id: ObjectId) -> Self {
+        obj_id.0
+    }
+}
+
 impl Deref for ObjectId {
     type Target = usize;
 
@@ -69,7 +75,7 @@ pub enum Slot {
 impl PartialEq for Slot {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Slot::Primitive(p1), Slot::Primitive(p2)) => Rc::as_ptr(p1).cast::<()>() == Rc::as_ptr(p2).cast::<()>(),
+            (Slot::Primitive(p1), Slot::Primitive(p2)) => Rc::ptr_eq(p1, p2),
             (Slot::ObjectRef(id1), Slot::ObjectRef(id2)) => id1 == id2,
             (Slot::AtomRef(id1), Slot::AtomRef(id2)) => id1 == id2,
             _ => false,
@@ -177,8 +183,14 @@ pub enum BoolExpr {
 impl Var for BoolExpr {
     fn var_type(&self) -> Rc<dyn Type> {
         match self {
-            BoolExpr::Term { var_type: var_tp, .. } | BoolExpr::Not { var_type: var_tp, .. } | BoolExpr::Eq { var_type: var_tp, .. } | BoolExpr::Lt { var_type: var_tp, .. } | BoolExpr::Leq { var_type: var_tp, .. } | BoolExpr::Or { var_type: var_tp, .. } | BoolExpr::And { var_type: var_tp, .. } => var_tp.upgrade().unwrap(),
+            BoolExpr::Term { var_type: var_tp, .. } | BoolExpr::Not { var_type: var_tp, .. } | BoolExpr::Eq { var_type: var_tp, .. } | BoolExpr::Lt { var_type: var_tp, .. } | BoolExpr::Leq { var_type: var_tp, .. } | BoolExpr::Or { var_type: var_tp, .. } | BoolExpr::And { var_type: var_tp, .. } => var_tp.upgrade().expect("Weak reference to type is invalid"),
         }
+    }
+}
+
+impl AsRef<BoolExpr> for BoolExpr {
+    fn as_ref(&self) -> &BoolExpr {
+        self
     }
 }
 
@@ -198,13 +210,13 @@ impl Object {
     }
 
     pub fn class(&self) -> Rc<dyn Class> {
-        self.class.upgrade().unwrap()
+        self.class.upgrade().expect("Weak reference to class is invalid")
     }
 }
 
 impl Var for Object {
     fn var_type(&self) -> Rc<dyn Type> {
-        self.class.upgrade().unwrap()
+        self.class.upgrade().expect("Weak reference to class is invalid")
     }
 
     fn into_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
@@ -228,8 +240,8 @@ impl Atom {
         let env = match args.get("tau") {
             Some(tau) => match tau {
                 Slot::Primitive(var) => var.clone().into_env().expect("Tau variable does not have an environment"),
-                Slot::ObjectRef(obj_id) => predicate.core().get_object(*obj_id).expect("Object ID in tau does not exist").into_env().expect("Object in tau does not have an environment"),
-                Slot::AtomRef(atom_id) => predicate.core().get_atom(*atom_id).expect("Atom ID in tau does not exist").into_env().expect("Atom in tau does not have an environment"),
+                Slot::ObjectRef(obj_id) => predicate.core().get_object(*obj_id).expect("Object ID in tau does not exist"),
+                Slot::AtomRef(atom_id) => predicate.core().get_atom(*atom_id).expect("Atom ID in tau does not exist"),
             },
             None => predicate.core(),
         };
@@ -246,7 +258,7 @@ impl Atom {
     }
 
     pub fn predicate(&self) -> Rc<Predicate> {
-        self.predicate.upgrade().unwrap()
+        self.predicate.upgrade().expect("Weak reference to predicate is invalid")
     }
 
     pub fn kind(&self) -> AtomKind {
@@ -260,7 +272,7 @@ impl Atom {
 
 impl Var for Atom {
     fn var_type(&self) -> Rc<dyn Type> {
-        self.predicate.upgrade().unwrap()
+        self.predicate.upgrade().expect("Weak reference to predicate is invalid")
     }
 
     fn into_env(self: Rc<Self>) -> Option<Rc<dyn Env>> {
@@ -270,53 +282,41 @@ impl Var for Atom {
 
 delegate_env!(Atom, env);
 
-fn push_negations(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+fn push_negations(expr: &Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {
-        BoolExpr::Not { term, .. } => push_inverted(term.clone()),
-        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::And {
-            var_type: var_type.clone(),
-            terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
-        }),
-        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::Or {
-            var_type: var_type.clone(),
-            terms: terms.iter().map(|t| push_negations(t.clone())).collect(),
-        }),
-        _ => expr,
+        BoolExpr::Not { term, .. } => push_inverted(term),
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: terms.iter().map(|t| push_negations(t)).collect() }),
+        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(|t| push_negations(t)).collect() }),
+        _ => expr.clone(),
     }
 }
 
 /// Processes an expression as if a `Not` wrapper were applied to it.
-fn push_inverted(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+fn push_inverted(expr: &Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {
         // Double Negation: Not(Not(term)) => term
-        BoolExpr::Not { term, .. } => push_negations(term.clone()),
+        BoolExpr::Not { term, .. } => push_negations(term),
 
         // De Morgan: Not(And(A, B)) => Or(Not(A), Not(B))
-        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or {
-            var_type: var_type.clone(),
-            terms: terms.iter().map(|t| push_inverted(t.clone())).collect(),
-        }),
+        BoolExpr::And { var_type, terms } => Rc::new(BoolExpr::Or { var_type: var_type.clone(), terms: terms.iter().map(|t| push_inverted(t)).collect() }),
 
         // De Morgan: Not(Or(A, B)) => And(Not(A), Not(B))
-        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::And {
-            var_type: var_type.clone(),
-            terms: terms.iter().map(|t| push_inverted(t.clone())).collect(),
-        }),
+        BoolExpr::Or { var_type, terms } => Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: terms.iter().map(|t| push_inverted(t)).collect() }),
 
         BoolExpr::Leq { var_type, left, right } => Rc::new(BoolExpr::Lt { var_type: var_type.clone(), left: right.clone(), right: left.clone() }),
         BoolExpr::Lt { var_type, left, right } => Rc::new(BoolExpr::Leq { var_type: var_type.clone(), left: right.clone(), right: left.clone() }),
 
-        BoolExpr::Term { var_type: var_tp, .. } | BoolExpr::Eq { var_type: var_tp, .. } => Rc::new(BoolExpr::Not { var_type: var_tp.clone(), term: expr }),
+        BoolExpr::Term { var_type: var_tp, .. } | BoolExpr::Eq { var_type: var_tp, .. } => Rc::new(BoolExpr::Not { var_type: var_tp.clone(), term: expr.clone() }),
     }
 }
 
-fn distribute(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
+fn distribute(expr: &Rc<BoolExpr>) -> Rc<BoolExpr> {
     match expr.as_ref() {
         BoolExpr::Or { var_type, terms } => {
             // Step 1: Recursively distribute child nodes and flatten any nested Ors
             let mut distributed_terms = Vec::new();
             for t in terms {
-                let dist = distribute(t.clone());
+                let dist = distribute(t);
                 if let BoolExpr::Or { terms: inner_terms, .. } = dist.as_ref() {
                     distributed_terms.extend(inner_terms.clone());
                 } else {
@@ -359,7 +359,7 @@ fn distribute(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
             // Flatten nested Ands to keep the AST compact
             let mut distributed_terms = Vec::new();
             for t in terms {
-                let dist = distribute(t.clone());
+                let dist = distribute(t);
                 if let BoolExpr::And { terms: inner_terms, .. } = dist.as_ref() {
                     distributed_terms.extend(inner_terms.clone());
                 } else {
@@ -369,12 +369,12 @@ fn distribute(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
             Rc::new(BoolExpr::And { var_type: var_type.clone(), terms: distributed_terms })
         }
 
-        _ => expr,
+        _ => expr.clone(),
     }
 }
 
-pub fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
-    distribute(push_negations(expr))
+pub fn to_cnf(expr: &Rc<BoolExpr>) -> Rc<BoolExpr> {
+    distribute(&push_negations(expr))
 }
 
 /// Resolves a nested variable path starting from the given environment.
@@ -384,17 +384,11 @@ pub fn to_cnf(expr: Rc<BoolExpr>) -> Rc<BoolExpr> {
 /// This supports walking through primitive variables, object references, and
 /// atom references while returning a `RiddleError` if any segment is missing or
 /// the current value is not an environment.
-pub fn get_var_by_path(core: &dyn Core, env: &dyn Env, path: &[String]) -> Result<Slot, RiddleError> {
+pub fn get_var_by_path<S: AsRef<str>>(core: &dyn Core, env: &dyn Env, path: &[S]) -> Result<Slot, RiddleError> {
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
-    rest.iter().try_fold(env.get(first).ok_or_else(|| RiddleError::NotFound(first.to_string()))?, |acc, id| match acc {
-        Slot::Primitive(var) => var.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id, first))),
-        Slot::ObjectRef(obj_id) => {
-            let obj = core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?;
-            obj.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Object {} does not have an environment", *obj_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id, *obj_id)))
-        }
-        Slot::AtomRef(atom_id) => {
-            let atom = core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?;
-            atom.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Atom {} does not have an environment", *atom_id)))?.get(id).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id, *atom_id)))
-        }
+    rest.iter().try_fold(env.get(first.as_ref()).ok_or_else(|| RiddleError::NotFound(first.as_ref().to_string()))?, |acc, id| match acc {
+        Slot::Primitive(var) => var.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first.as_ref())))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id.as_ref(), first.as_ref()))),
+        Slot::ObjectRef(obj_id) => core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id.as_ref(), *obj_id))),
+        Slot::AtomRef(atom_id) => core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id.as_ref(), *atom_id))),
     })
 }
