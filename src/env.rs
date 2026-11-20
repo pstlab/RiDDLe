@@ -16,6 +16,13 @@ use std::{
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ObjectId(pub(super) usize);
 
+impl From<ObjectId> for usize {
+    #[inline]
+    fn from(id: ObjectId) -> Self {
+        id.0
+    }
+}
+
 impl<T> Index<ObjectId> for Vec<T> {
     type Output = T;
     fn index(&self, var: ObjectId) -> &Self::Output {
