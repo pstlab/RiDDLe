@@ -383,7 +383,7 @@ pub fn execute(scp: &Rc<dyn Scope>, env: Rc<dyn Env>, stmt: &Statement) -> Resul
                 }
             }
             let atom = scp.core().new_atom(predicate.clone(), *kind, args, *resolution_constraint)?;
-            let atom_rc = scp.core().get_atom(atom).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom)))?;
+            let atom_rc = scp.core().get_atom(atom).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", atom)))?;
             predicate.call_invariants(atom_rc)?;
             env.set(name.clone(), Slot::AtomRef(atom));
             Ok(())

@@ -105,11 +105,11 @@ impl CommonCore {
     }
 
     pub fn get_object(&self, id: ObjectId) -> Option<Rc<Object>> {
-        self.objects.borrow().get(*id).cloned()
+        self.objects.borrow().get(id.0).cloned()
     }
 
     pub fn get_object_name(&self, id: ObjectId) -> Option<String> {
-        self.object_names.borrow().get(*id).cloned().flatten()
+        self.object_names.borrow().get(id.0).cloned().flatten()
     }
 
     pub fn new_object(&self, class: Rc<dyn Class>) -> ObjectId {
@@ -125,7 +125,7 @@ impl CommonCore {
     }
 
     pub fn get_atom(&self, id: AtomId) -> Option<Rc<Atom>> {
-        self.atoms.borrow().get(*id).cloned()
+        self.atoms.borrow().get(id.0).cloned()
     }
 
     pub fn new_atom(&self, predicate: Rc<Predicate>, kind: AtomKind, args: HashMap<String, Slot>, resolution_constraint: ResolutionConstraint) -> Result<AtomId, RiddleError> {
@@ -153,7 +153,7 @@ impl Env for CommonCore {
 
     fn set(&self, name: String, value: Slot) {
         if let Slot::ObjectRef(id) = value {
-            self.object_names.borrow_mut()[*id] = Some(name.clone());
+            self.object_names.borrow_mut()[id] = Some(name.clone());
         }
         self.env.set(name, value);
     }

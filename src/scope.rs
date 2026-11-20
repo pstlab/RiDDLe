@@ -358,7 +358,7 @@ impl Constructor {
         if args.len() != self.args.len() {
             return Err(RiddleError::RuntimeError(format!("Expected {} arguments, got {}", self.args.len(), args.len())));
         }
-        let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *object)))?.into_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
+        let obj_env = self.core().get_object(object).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", object)))?.into_env().ok_or_else(|| RiddleError::RuntimeError("Object environment not found".into()))?;
         // the context in which the constructor is invoked..
         let constructor_env = Rc::new(CommonEnv::new(Some(obj_env.clone())));
         constructor_env.set(String::from("this"), Slot::ObjectRef(object));

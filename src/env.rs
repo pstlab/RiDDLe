@@ -9,30 +9,23 @@ use std::{
     any::Any,
     cell::RefCell,
     collections::HashMap,
-    ops::Deref,
+    ops::{Index, IndexMut},
     rc::{Rc, Weak},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ObjectId(pub(super) usize);
 
-impl From<usize> for ObjectId {
-    fn from(val: usize) -> Self {
-        ObjectId(val)
+impl<T> Index<ObjectId> for Vec<T> {
+    type Output = T;
+    fn index(&self, var: ObjectId) -> &Self::Output {
+        &self[var.0]
     }
 }
 
-impl From<ObjectId> for usize {
-    fn from(obj_id: ObjectId) -> Self {
-        obj_id.0
-    }
-}
-
-impl Deref for ObjectId {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl<T> IndexMut<ObjectId> for Vec<T> {
+    fn index_mut(&mut self, var: ObjectId) -> &mut Self::Output {
+        &mut self[var.0]
     }
 }
 
@@ -45,17 +38,16 @@ impl fmt::Display for ObjectId {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AtomId(pub(super) usize);
 
-impl Deref for AtomId {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl<T> Index<AtomId> for Vec<T> {
+    type Output = T;
+    fn index(&self, var: AtomId) -> &Self::Output {
+        &self[var.0]
     }
 }
 
-impl From<usize> for AtomId {
-    fn from(val: usize) -> Self {
-        AtomId(val)
+impl<T> IndexMut<AtomId> for Vec<T> {
+    fn index_mut(&mut self, var: AtomId) -> &mut Self::Output {
+        &mut self[var.0]
     }
 }
 
@@ -388,7 +380,7 @@ pub fn get_var_by_path<S: AsRef<str>>(core: &dyn Core, env: &dyn Env, path: &[S]
     let (first, rest) = path.split_first().ok_or_else(|| RiddleError::RuntimeError("Empty variable path".into()))?;
     rest.iter().try_fold(env.get(first.as_ref()).ok_or_else(|| RiddleError::NotFound(first.as_ref().to_string()))?, |acc, id| match acc {
         Slot::Primitive(var) => var.into_env().ok_or_else(|| RiddleError::NotAnEnvironment(format!("Variable '{}' in path does not have an environment", first.as_ref())))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in variable '{}'", id.as_ref(), first.as_ref()))),
-        Slot::ObjectRef(obj_id) => core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", *obj_id)))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id.as_ref(), *obj_id))),
-        Slot::AtomRef(atom_id) => core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", *atom_id)))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id.as_ref(), *atom_id))),
+        Slot::ObjectRef(obj_id) => core.get_object(obj_id).ok_or_else(|| RiddleError::NotFound(format!("Object {} not found", obj_id)))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in object {}", id.as_ref(), obj_id))),
+        Slot::AtomRef(atom_id) => core.get_atom(atom_id).ok_or_else(|| RiddleError::NotFound(format!("Atom {} not found", atom_id)))?.get(id.as_ref()).ok_or_else(|| RiddleError::NotFound(format!("Variable '{}' in path not found in atom {}", id.as_ref(), atom_id))),
     })
 }
