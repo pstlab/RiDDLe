@@ -23,6 +23,13 @@ impl From<ObjectId> for usize {
     }
 }
 
+impl From<usize> for ObjectId {
+    #[inline]
+    fn from(id: usize) -> Self {
+        ObjectId(id)
+    }
+}
+
 impl<T> Index<ObjectId> for Vec<T> {
     type Output = T;
     fn index(&self, var: ObjectId) -> &Self::Output {
